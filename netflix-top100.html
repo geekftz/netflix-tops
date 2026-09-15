@@ -1,0 +1,677 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Netflix 历史剧集 TOP 135 · 数据可视化</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  :root{
+    --bg:#0b0b0f; --bg2:#141419; --card:#18181f; --card2:#1f1f28;
+    --red:#e50914; --red2:#f6121d; --gold:#f5c518;
+    --txt:#f2f2f2; --sub:#9a9aa5; --line:#2a2a33;
+  }
+  html{scroll-behavior:smooth}
+  body{ background:var(--bg); color:var(--txt); font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Hiragino Sans GB","Microsoft YaHei","Noto Sans CJK SC",sans-serif; }
+  a{color:inherit}
+
+  /* ---------- 顶部导航 ---------- */
+  .topbar{ position:sticky; top:0; z-index:50; display:flex; align-items:center; gap:14px;
+    padding:12px 28px; background:rgba(11,11,15,.88); backdrop-filter:blur(12px); border-bottom:1px solid var(--line); }
+  .logo{ font-size:26px; font-weight:900; color:var(--red); letter-spacing:2px; font-style:italic; }
+  .topbar .sub{ color:var(--sub); font-size:13px; }
+  .topbar .spacer{flex:1}
+  .topbar a.src{ font-size:12px; color:var(--sub); text-decoration:none; border:1px solid var(--line); padding:5px 12px; border-radius:20px; }
+  .topbar a.src:hover{ color:#fff; border-color:var(--red); }
+
+  /* ---------- Hero ---------- */
+  .hero{ position:relative; padding:70px 28px 46px; overflow:hidden;
+    background:radial-gradient(1200px 500px at 20% -10%, rgba(229,9,20,.28), transparent 60%),
+               radial-gradient(900px 400px at 85% 0%, rgba(120,20,255,.18), transparent 60%), var(--bg); }
+  .hero h1{ font-size:clamp(30px,4.6vw,54px); font-weight:900; letter-spacing:1px; }
+  .hero h1 em{ color:var(--red); font-style:normal; }
+  .hero p{ margin-top:14px; color:var(--sub); max-width:760px; line-height:1.8; font-size:14px; }
+  .stats{ display:flex; flex-wrap:wrap; gap:14px; margin-top:28px; }
+  .stat{ background:rgba(24,24,31,.8); border:1px solid var(--line); border-radius:14px; padding:16px 22px; min-width:150px; }
+  .stat b{ display:block; font-size:30px; font-weight:900; color:#fff; }
+  .stat b i{ color:var(--red); font-style:normal; }
+  .stat span{ color:var(--sub); font-size:12px; }
+
+  /* ---------- 官方TOP10 图表 ---------- */
+  .section{ padding:44px 28px 8px; }
+  .section h2{ font-size:22px; font-weight:800; display:flex; align-items:center; gap:10px; }
+  .section h2::before{ content:""; width:5px; height:22px; background:var(--red); border-radius:3px; }
+  .section .tip{ color:var(--sub); font-size:12px; margin:8px 0 22px; }
+  .bars{ display:flex; flex-direction:column; gap:10px; max-width:920px; }
+  .bar-row{ display:grid; grid-template-columns:170px 1fr 78px; align-items:center; gap:12px; font-size:13px; }
+  .bar-row .name{ color:#dcdce2; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; text-align:right; }
+  .bar-row .name .rk{ color:var(--sub); margin-right:6px; font-size:11px; }
+  .bar-track{ height:26px; background:var(--bg2); border-radius:6px; overflow:hidden; }
+  .bar-fill{ height:100%; width:0; border-radius:6px; background:linear-gradient(90deg,#8b0000,var(--red2));
+    display:flex; align-items:center; transition:width 1.1s cubic-bezier(.2,.7,.2,1); }
+  .bar-fill.kr{ background:linear-gradient(90deg,#0b57a4,#3ba7ff); }
+  .bar-val{ font-weight:800; font-size:13px; }
+  .legend{ display:flex; gap:18px; margin-top:14px; font-size:12px; color:var(--sub); }
+  .legend i{ display:inline-block; width:12px; height:12px; border-radius:3px; margin-right:6px; vertical-align:-1px; }
+
+  /* ---------- 韩剧专区 ---------- */
+  .kd-row{ display:flex; gap:14px; overflow-x:auto; padding:6px 2px 16px; scrollbar-width:thin; }
+  .kd-item{ flex:0 0 190px; background:var(--card); border:1px solid var(--line); border-radius:14px; padding:14px; cursor:pointer; transition:.2s; position:relative; }
+  .kd-item:hover{ transform:translateY(-4px); border-color:#3ba7ff; background:var(--card2); }
+  .kd-medal{ font-size:22px; font-weight:900; color:#3ba7ff; }
+  .kd-item:nth-child(1) .kd-medal,.kd-item:nth-child(2) .kd-medal,.kd-item:nth-child(3) .kd-medal{ color:var(--gold); }
+  .kd-item h4{ font-size:15px; margin:8px 0 3px; }
+  .kd-item .en{ font-size:11px; color:var(--sub); }
+  .kd-item .m{ font-size:12px; color:var(--red2); font-weight:700; margin-top:8px; }
+
+  /* ---------- 筛选栏 ---------- */
+  .filters{ position:sticky; top:63px; z-index:40; background:rgba(11,11,15,.92); backdrop-filter:blur(12px);
+    padding:14px 28px; border-top:1px solid var(--line); border-bottom:1px solid var(--line);
+    display:flex; flex-wrap:wrap; gap:10px; align-items:center; }
+  .chip{ border:1px solid var(--line); background:var(--bg2); color:#cfcfd8; font-size:13px; padding:7px 15px;
+    border-radius:20px; cursor:pointer; transition:.15s; }
+  .chip:hover{ border-color:var(--red); color:#fff; }
+  .chip.on{ background:var(--red); border-color:var(--red); color:#fff; font-weight:700; }
+  .chip.on.k{ background:#0b57a4; border-color:#0b57a4; }
+  select,.search{ background:var(--bg2); border:1px solid var(--line); color:var(--txt); font-size:13px;
+    padding:8px 12px; border-radius:10px; outline:none; }
+  .search{ width:210px; }
+  .count{ color:var(--sub); font-size:12px; margin-left:auto; }
+
+  /* ---------- 卡片网格 ---------- */
+  .grid{ display:grid; grid-template-columns:repeat(auto-fill,minmax(212px,1fr)); gap:18px; padding:26px 28px 60px; }
+  .card{ background:var(--card); border:1px solid var(--line); border-radius:14px; overflow:hidden; cursor:pointer;
+    transition:transform .18s, box-shadow .18s, border-color .18s; display:flex; flex-direction:column; }
+  .card:hover{ transform:translateY(-5px); border-color:#444; box-shadow:0 14px 40px rgba(0,0,0,.5); }
+  .poster-wrap{ position:relative; aspect-ratio:2/3; background:var(--bg2); overflow:hidden; }
+  .poster-wrap img{ width:100%; height:100%; object-fit:cover; display:block; opacity:0; transition:opacity .5s; }
+  .poster-wrap img.ok{ opacity:1; }
+  .ph{ position:absolute; inset:0; display:flex; flex-direction:column; justify-content:center; align-items:center; gap:8px;
+    text-align:center; padding:14px; color:#fff; }
+  .ph .big{ font-size:52px; font-weight:900; opacity:.95; text-shadow:0 2px 12px rgba(0,0,0,.5); }
+  .ph .small{ font-size:11px; letter-spacing:3px; opacity:.75; }
+  .ph .cn{ font-size:14px; font-weight:700; }
+  .skeleton{ position:absolute; inset:0; background:linear-gradient(110deg,#191920 30%,#23232e 50%,#191920 70%);
+    background-size:200% 100%; animation:sh 1.4s infinite; }
+  @keyframes sh{ to{ background-position:-200% 0; } }
+  .rank-badge{ position:absolute; top:0; left:0; z-index:3; background:var(--red); color:#fff; font-weight:900;
+    font-size:15px; padding:5px 11px; border-radius:0 0 12px 0; box-shadow:0 2px 10px rgba(0,0,0,.5); }
+  .kr-badge{ position:absolute; top:8px; right:8px; z-index:3; background:rgba(11,87,164,.92); color:#fff;
+    font-size:10px; font-weight:700; padding:4px 8px; border-radius:6px; }
+  .off-badge{ position:absolute; bottom:8px; right:8px; z-index:3; background:rgba(0,0,0,.72); color:var(--gold);
+    font-size:10px; font-weight:700; padding:4px 8px; border-radius:6px; border:1px solid rgba(245,197,24,.4); }
+  .info{ padding:13px 14px 15px; display:flex; flex-direction:column; gap:7px; flex:1; }
+  .info h3{ font-size:15.5px; font-weight:800; line-height:1.35; }
+  .info .en{ font-size:11px; color:var(--sub); }
+  .meta{ font-size:12px; color:#b9b9c4; }
+  .metric{ font-size:12.5px; font-weight:800; color:var(--red2); }
+  .metric.blue{ color:#3ba7ff; }
+  .metric .note{ font-weight:400; color:var(--sub); font-size:11px; margin-left:4px; }
+  .tags{ display:flex; flex-wrap:wrap; gap:6px; }
+  .tag{ font-size:10.5px; color:#c8c8d2; background:#26262f; padding:3px 9px; border-radius:12px; }
+  .cast{ font-size:11.5px; color:#b9b9c4; line-height:1.55; }
+  .cast b{ color:#8f8f9c; font-weight:600; }
+  .desc{ font-size:12px; color:var(--sub); line-height:1.75; display:-webkit-box; -webkit-line-clamp:3; line-clamp:3; -webkit-box-orient:vertical; overflow:hidden; }
+
+  /* ---------- 弹窗 ---------- */
+  .modal-mask{ position:fixed; inset:0; z-index:100; background:rgba(0,0,0,.78); display:none;
+    align-items:center; justify-content:center; padding:24px; backdrop-filter:blur(6px); }
+  .modal-mask.show{ display:flex; }
+  .modal{ width:min(880px,96vw); max-height:90vh; overflow:auto; background:var(--card); border:1px solid #333;
+    border-radius:18px; display:grid; grid-template-columns:300px 1fr; }
+  .modal .left{ position:relative; min-height:420px; background:var(--bg2); }
+  .modal .left img{ width:100%; height:100%; object-fit:cover; position:absolute; inset:0; }
+  .modal .right{ padding:30px 30px 36px; }
+  .modal h2{ font-size:26px; font-weight:900; }
+  .modal .en{ color:var(--sub); margin-top:4px; font-size:13px; }
+  .modal .meta{ margin:14px 0; font-size:13px; color:#c9c9d3; }
+  .modal .metric{ font-size:15px; margin:10px 0; }
+  .modal .desc{ color:#cfcfda; font-size:13.5px; line-height:2; -webkit-line-clamp:unset; line-clamp:unset; display:block; margin-top:14px; }
+  .modal .cast{ margin-top:14px; font-size:13px; }
+  .modal .tags{ margin-top:12px; }
+  .m-close{ position:sticky; top:0; margin-left:auto; display:block; float:right; background:rgba(0,0,0,.5);
+    color:#fff; border:none; width:34px; height:34px; border-radius:50%; font-size:17px; cursor:pointer; z-index:5; }
+  @media (max-width:720px){ .modal{ grid-template-columns:1fr; } .modal .left{ min-height:300px; } .bar-row{ grid-template-columns:110px 1fr 70px; } }
+
+  footer{ border-top:1px solid var(--line); padding:34px 28px 46px; color:var(--sub); font-size:12px; line-height:2; }
+  footer b{ color:#cfcfda; }
+  .totop{ position:fixed; right:22px; bottom:22px; z-index:60; width:42px; height:42px; border-radius:50%;
+    border:none; background:var(--red); color:#fff; font-size:18px; cursor:pointer; display:none; box-shadow:0 6px 18px rgba(0,0,0,.5); }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="logo">N</div>
+  <div>
+    <div style="font-weight:800;font-size:15px;">Netflix 剧集 · 历史百强榜</div>
+    <div class="sub">Most-Watched Netflix Series of All Time</div>
+  </div>
+  <div class="spacer"></div>
+  <a class="src" href="https://www.whats-on-netflix.com/what-to-watch/most-watched-series-movies-of-all-time-hours-watched/" target="_blank" rel="noopener">数据来源 ↗</a>
+</div>
+
+<header class="hero">
+  <h1>NETFLIX 历史剧集 <em>TOP 135</em> 总榜</h1>
+  <p>收录 Netflix 开播以来最具代表性的 135 部剧集（含 54 部韩剧）。观看量数据来自 Netflix 官方 Top10 榜单（上线 91 天观看量 Views）与 Netflix 半年度观看时长报告，经 What's on Netflix、维基百科及公开报道交叉整理。排名以官方数据为锚，兼顾影响力综合排序。</p>
+  <div class="stats" id="stats"></div>
+</header>
+
+<section class="section">
+  <h2>Netflix 官方历史 TOP 10（按季 · 上线91天观看量）</h2>
+  <div class="tip">单位：亿次观看 · 蓝色为韩剧 · 数据截至 2026 年 8 月官方榜单</div>
+  <div class="bars" id="bars"></div>
+  <div class="legend">
+    <span><i style="background:linear-gradient(90deg,#8b0000,#f6121d)"></i>英语 / 其他剧</span>
+    <span><i style="background:linear-gradient(90deg,#0b57a4,#3ba7ff)"></i>韩剧</span>
+  </div>
+</section>
+
+<section class="section">
+  <h2>🇰🇷 韩剧专区 TOP 10</h2>
+  <div class="tip">按综合热度排序 · 点击可查看详情 · 全部 54 部韩剧可在下方筛选「韩剧」</div>
+  <div class="kd-row" id="kdRow"></div>
+</section>
+
+<div class="filters" id="filters">
+  <span style="font-size:13px;color:var(--sub)">地区：</span>
+  <button class="chip on" data-region="all">全部</button>
+  <button class="chip k" data-region="KR">🇰🇷 韩剧</button>
+  <button class="chip" data-region="EN">英语剧</button>
+  <button class="chip" data-region="OT">其他外语剧</button>
+  <span style="font-size:13px;color:var(--sub);margin-left:8px">类型：</span>
+  <button class="chip on" data-type="all">全部</button>
+  <button class="chip" data-type="连续剧">连续剧</button>
+  <button class="chip" data-type="限定剧">限定剧</button>
+  <button class="chip" data-type="真人秀">真人秀</button>
+  <button class="chip" data-type="动画">动画</button>
+  <select id="genreSel"><option value="all">全部题材</option></select>
+  <select id="sortSel">
+    <option value="hot">综合热度 ↓</option>
+    <option value="year">上线年份 ↓</option>
+    <option value="views">观看量 ↓</option>
+    <option value="name">名称 A–Z</option>
+  </select>
+  <input class="search" id="search" placeholder="搜索剧名 / 主演 / 关键词…">
+  <span class="count" id="count"></span>
+</div>
+
+<main class="grid" id="grid"></main>
+
+<footer>
+  <b>数据说明</b><br>
+  1. 「观看量（Views）」为 Netflix 官方口径：上线 91 天内的观看次数（观看时长 ÷ 单季时长），红色标注；「观看时长」为 Netflix 半年度参与度报告口径（累计小时），蓝色标注。两者不可直接比较。<br>
+  2. 官方历史 TOP10 在榜剧集以 <b style="color:var(--gold)">★ 官方历史TOP10</b> 角标标出（截至 2026 年 8 月榜单）。同一剧集多季在榜的，条目展示其最高单季数据。<br>
+  3. 数据来源：Netflix Top10 官方榜单、Netflix Engagement Report、What's on Netflix、维基百科及公开报道；封面海报由 TVmaze / Wikipedia 公开接口在浏览器端实时加载，加载失败时显示兜底卡片。<br>
+  4. 本页面仅用于学习交流，不存储任何版权内容。整理时间：2026 年 9 月。
+</footer>
+
+<div class="modal-mask" id="mask">
+  <div class="modal">
+    <div class="left"><div class="ph" id="mPh" style="position:absolute;inset:0"></div><img id="mImg" alt="" style="display:none"></div>
+    <div class="right">
+      <button class="m-close" id="mClose">✕</button>
+      <h2 id="mTitle"></h2>
+      <div class="en" id="mEn"></div>
+      <div class="meta" id="mMeta"></div>
+      <div class="metric" id="mMetric"></div>
+      <div class="tags" id="mTags"></div>
+      <div class="cast" id="mCast"></div>
+      <p class="desc" id="mDesc"></p>
+    </div>
+  </div>
+</div>
+
+<button class="totop" id="totop" title="回到顶部">↑</button>
+
+<script>
+/* ================= 官方历史 TOP10（按季，91天观看量，单位：百万） ================= */
+const CHART = [
+  {name:"鱿鱼游戏 第1季", v:265.2, kr:1},
+  {name:"星期三 第1季", v:252.1, kr:0},
+  {name:"鱿鱼游戏 第2季", v:192.6, kr:1},
+  {name:"鱿鱼游戏 第3季", v:145.8, kr:1},
+  {name:"混沌少年时 限定剧", v:142.6, kr:0},
+  {name:"怪奇物语 第4季", v:140.7, kr:0},
+  {name:"怪奇物语 第5季", v:133.8, kr:0},
+  {name:"星期三 第2季", v:119.3, kr:0},
+  {name:"怪物：达莫 限定剧", v:115.6, kr:0},
+  {name:"布里奇顿 第1季", v:113.3, kr:0},
+];
+
+/* ================= 剧集数据集 =================
+   r=综合排名 t=英文原名 cn=中文名 y=首播年 ys=年份显示 c=国家 lg=语言 ty=类型
+   g=题材 v=91天观看量(百万) h=观看时长(百万小时) mn=数据口径 cast=主演 d=简介 k=韩剧 off=官方历史TOP10在榜 q=海报检索词 */
+const SHOWS = [
+{r:1,t:"Squid Game",cn:"鱿鱼游戏",y:2021,ys:"2021–2025",c:"韩国",lg:"韩语",ty:"连续剧",g:["惊悚","生存","剧情"],v:265.2,h:2205.2,mn:"第1季 · 91天",cast:["李政宰","郑好娟","朴海秀","魏嘏隽"],d:"456名走投无路的参赛者被困神秘场地，以童年游戏定生死、争夺456亿韩元。全球现象级爆款，Netflix历史观看量第一的剧集，第二季、第三季均刷新纪录。",k:1,off:1},
+{r:2,t:"Wednesday",cn:"星期三",y:2022,ys:"2022–2025",c:"美国",lg:"英语",ty:"连续剧",g:["奇幻","悬疑","喜剧"],v:252.1,h:1718.8,mn:"第1季 · 91天",cast:["詹娜·奥尔特加","格温多兰·克里斯蒂","凯瑟琳·泽塔-琼斯"],d:"亚当斯一家的女儿星期三入读奈弗莫尔学院，凭借通灵能力解开校园怪物谜团与家族旧案。蒂姆·波顿执导，英语剧集历史第一。",off:1},
+{r:3,t:"Adolescence",cn:"混沌少年时",y:2025,ys:"2025",c:"英国",lg:"英语",ty:"限定剧",g:["犯罪","剧情"],v:142.6,h:546.5,mn:"限定剧 · 91天",cast:["斯蒂芬·格拉汉姆","欧文·库珀"],d:"一名13岁少年被控谋杀同学，以一镜到底手法剖析青少年犯罪、家庭与网络有毒文化，横扫艾美奖的英国限定剧。",off:1},
+{r:4,t:"Stranger Things",cn:"怪奇物语",y:2016,ys:"2016–2025",c:"美国",lg:"英语",ty:"连续剧",g:["科幻","恐怖","剧情"],v:140.7,h:1838,mn:"第4季 · 91天",cast:["米莉·波比·布朗","菲恩·伍法德","大卫·哈伯","薇诺娜·瑞德"],d:"1980年代印第安纳小镇，男孩离奇失踪引出「颠倒世界」的恐怖秘密，少年们与超能力少女11号并肩作战。Netflix招牌IP，2025年迎来最终季。",off:1},
+{r:5,t:"DAHMER - Monster: The Jeffrey Dahmer Story",cn:"怪物：杰夫瑞·达莫的故事",y:2022,ys:"2022",c:"美国",lg:"英语",ty:"限定剧",g:["犯罪","惊悚","剧情"],v:115.6,h:1031.1,mn:"限定剧 · 91天",cast:["埃文·彼得斯","理查德·詹金斯"],d:"瑞恩·墨菲打造的真实犯罪剧，聚焦连环杀手杰夫瑞·达莫的罪行与受害者群像，并审视制度性失职。",off:1},
+{r:6,t:"Bridgerton",cn:"布里奇顿",y:2020,ys:"2020–",c:"美国",lg:"英语",ty:"连续剧",g:["爱情","历史","剧情"],v:113.3,h:929.3,mn:"第1季 · 91天",cast:["菲比·黛内芙","雷吉-让·佩吉","乔纳森·拜利"],d:"摄政时期伦敦上流社会的爱情与八卦，布里奇顿家族子女的婚恋故事，华丽服化道混搭现代配乐，四季均登全球榜首。",off:1},
+{r:7,t:"I Will Find You",cn:"我会找到你",y:2026,ys:"2026",c:"美国",lg:"英语",ty:"限定剧",g:["悬疑","惊悚"],v:112.9,h:619,mn:"限定剧 · 91天",cast:["萨姆·沃辛顿"],d:"哈兰·科博小说改编、Netflix首部美国版科博剧集：因杀妻入狱的父亲，在儿子失踪案中发现妻子可能还活着。2026年爆款，冲进历史总榜第8。",off:1},
+{r:8,t:"The Queen's Gambit",cn:"后翼弃兵",y:2020,ys:"2020",c:"美国",lg:"英语",ty:"限定剧",g:["剧情","励志"],v:112.8,h:746.4,mn:"限定剧 · 91天",cast:["安雅·泰勒-乔伊"],d:"孤儿院走出的国际象棋天才贝丝·哈蒙，在男性主导的棋坛登顶世界冠军，同时与药物成瘾和孤独搏斗。横扫艾美奖、金球奖。",off:1},
+{r:9,t:"Money Heist",cn:"纸钞屋",y:2017,ys:"2017–2021",c:"西班牙",lg:"西班牙语",ty:"连续剧",g:["犯罪","惊悚","悬疑"],v:106,h:710.2,mn:"第4部 · 91天",cast:["乌苏拉·科尔维罗","阿尔瓦罗·莫奇","佩德罗·阿隆索"],d:"「教授」策划西班牙皇家造币厂与国家银行惊天劫案，东京、柏林、丹佛等代号成员与警方斗智斗勇。西语剧全球化的起点。",off:1},
+{r:10,t:"Lupin",cn:"亚森·罗宾",y:2021,ys:"2021–2023",c:"法国",lg:"法语",ty:"连续剧",g:["犯罪","悬疑","剧情"],v:99.5,h:396.3,mn:"第1部 · 91天",cast:["奥玛·希"],d:"奥玛·希饰演的绅士大盗阿桑为父昭雪，以怪盗亚森·罗宾为灵感在巴黎上演高智商盗窃与复仇。法语剧历史第一。",off:1},
+{r:11,t:"The Night Agent",cn:"暗夜情报员",y:2023,ys:"2023–2025",c:"美国",lg:"英语",ty:"连续剧",g:["动作","惊悚","悬疑"],v:98.2,h:803.2,mn:"第1季 · 91天",cast:["加布里埃尔·巴索","卢西安·布坎南"],d:"FBI低阶探员在白宫地下室接听一通紧急电话后卷入惊天阴谋，节奏飞快的政治动作惊悚剧。"},
+{r:12,t:"Fool Me Once",cn:"骗我一次",y:2024,ys:"2024",c:"英国",lg:"英语",ty:"限定剧",g:["悬疑","惊悚"],v:98.2,h:629.8,mn:"限定剧 · 91天",cast:["米歇尔·基根","理查德·阿米蒂奇"],d:"哈兰·科博小说改编：军人之妻在保姆摄像头上看到「已故」的丈夫现身，真相层层反转，英国限定剧观看量之王。"},
+{r:13,t:"His & Hers",cn:"他与她",y:2026,ys:"2026",c:"美国",lg:"英语",ty:"限定剧",g:["悬疑","惊悚"],v:98.2,h:428.9,mn:"限定剧 · 91天",cast:["泰莎·汤普森","乔·博恩瑟"],d:"一桩小镇谋杀案，让分居的警探与记者夫妇各执一词。双视角叙事的2026年开年悬疑热剧。"},
+{r:14,t:"Baby Reindeer",cn:"驯鹿宝贝",y:2024,ys:"2024",c:"英国",lg:"英语",ty:"限定剧",g:["剧情","惊悚"],v:84.5,h:335.2,mn:"限定剧 · 91天",cast:["理查德·加德","杰西卡·冈宁"],d:"酒保被女跟踪者步步紧逼，黑色幽默包裹的创伤自白。理查德·加德根据自身经历创作，横扫艾美奖限定剧类。"},
+{r:15,t:"The Witcher",cn:"猎魔人",y:2019,ys:"2019–2023",c:"美国",lg:"英语",ty:"连续剧",g:["奇幻","动作","冒险"],v:83,h:663.6,mn:"第1季 · 91天",cast:["亨利·卡维尔","安亚·查洛特拉","弗蕾娅·艾伦"],d:"猎魔人杰洛特行走大陆斩妖除魔，与叶奈法、希里的命运交织。改编自波兰奇幻名著，游戏粉必看。"},
+{r:16,t:"Queen Charlotte: A Bridgerton Story",cn:"夏洛特王后：布里奇顿前传",y:2023,ys:"2023",c:"美国",lg:"英语",ty:"限定剧",g:["爱情","历史","剧情"],v:81.3,h:526.8,mn:"限定剧 · 91天",cast:["英迪娅·阿马泰菲奥","科里·迈尔克里斯特"],d:"布里奇顿前传：年轻的夏洛特与乔治国王的婚姻与王室秘辛，以及她如何登顶权力与时尚之巅。"},
+{r:17,t:"The Watcher",cn:"窥视者",y:2022,ys:"2022",c:"美国",lg:"英语",ty:"限定剧",g:["惊悚","悬疑"],v:79.6,h:447.1,mn:"第1季 · 91天",cast:["娜奥米·沃茨","鲍比·坎纳瓦尔"],d:"瑞恩·墨菲出品：一家人搬入新泽西豪宅后收到署名「窥视者」的威胁信件，邻里疑云密布，真实事件改编。"},
+{r:18,t:"La Palma",cn:"拉帕尔马",y:2024,ys:"2024",c:"挪威",lg:"挪威语",ty:"限定剧",g:["灾难","惊悚","剧情"],v:70.3,h:215.7,mn:"限定剧 · 91天",cast:["英格丽德·波尔索·贝达尔"],d:"拉帕尔马岛火山喷发引发灭世海啸，度假中的家庭末日求生。北欧灾难题材黑马，冲进非英语历史总榜。",off:1},
+{r:19,t:"Teach You a Lesson",cn:"参考教",y:2026,ys:"2026",c:"韩国",lg:"韩语",ty:"限定剧",g:["动作","剧情","校园"],v:64.7,h:691.1,mn:"限定剧 · 91天",cast:["金武烈","李星民","秦基周"],d:"2026年韩剧爆款，改编自人气网漫《Get Schooled》：校园秩序崩坏之际，非常规督导员空降学校以暴制暴。冲进非英语历史总榜第10。",k:1,off:1},
+{r:20,t:"Who Killed Sara?",cn:"谁杀了莎拉？",y:2021,ys:"2021–2022",c:"墨西哥",lg:"西班牙语",ty:"连续剧",g:["悬疑","犯罪","惊悚"],v:58.4,h:392.4,mn:"第1季 · 91天",cast:["马诺洛·卡尔多纳"],d:"阿莱克斯含冤入狱18年后出狱，誓要找出杀害妹妹莎拉的真凶并复仇。墨西哥悬疑剧全球爆红的代表作。"},
+{r:21,t:"Berlin",cn:"柏林",y:2023,ys:"2023",c:"西班牙",lg:"西班牙语",ty:"连续剧",g:["犯罪","悬疑","爱情"],v:56.7,h:372.6,mn:"第1季 · 91天",cast:["佩德罗·阿隆索"],d:"《纸钞屋》衍生剧：魅力大盗柏林在巅峰时期于巴黎策划的珠宝大劫案，以及一段致命的爱情。"},
+{r:22,t:"All of Us Are Dead",cn:"僵尸校园",y:2022,ys:"2022–",c:"韩国",lg:"韩语",ty:"连续剧",g:["丧尸","惊悚","青春"],v:55.5,h:679.3,mn:"第1季 · 91天",cast:["朴持厚","尹灿荣","赵怡贤","朴所罗门"],d:"孝山高中爆发丧尸病毒，学生们被困校园极限求生。韩剧青春丧尸题材代表作，上线即登顶全球榜，第二季已续订。",k:1},
+{r:23,t:"Dear Child",cn:"亲爱的孩子",y:2023,ys:"2023",c:"德国",lg:"德语",ty:"限定剧",g:["悬疑","惊悚","犯罪"],v:50.9,h:245.4,mn:"限定剧 · 91天",cast:["金·里德尔","奈拉·舒伯特"],d:"一名被囚禁多年的女子带着孩子逃出魔窟，一桩绑架案的惊人真相随之揭开。德国悬疑剧的口碑黑马。"},
+{r:24,t:"Elite",cn:"名校风暴",y:2018,ys:"2018–2024",c:"西班牙",lg:"西班牙语",ty:"连续剧",g:["青春","悬疑","剧情"],v:50,h:334.8,mn:"第3季 · 91天",cast:["伊赞·埃斯卡米利亚","埃斯特尔·埃克波西托","丹娜·保拉"],d:"三名工薪阶层学生进入贵族学校，阶级冲突与谋杀谜案交织。共八季，西语青春剧全球符号。"},
+{r:25,t:"Queen of Tears",cn:"泪之女王",y:2024,ys:"2024",c:"韩国",lg:"韩语",ty:"连续剧",g:["爱情","剧情","喜剧"],h:682.6,mn:"全剧累计",cast:["金秀贤","金智媛"],d:"财阀女王洪海仁与超市王子白贤佑婚姻危机后重燃爱火。tvN历代收视冠军，Netflix韩剧累计观看时长第三，2024年最火韩剧。",k:1},
+{r:26,t:"Extraordinary Attorney Woo",cn:"非常律师禹英禑",y:2022,ys:"2022",c:"韩国",lg:"韩语",ty:"连续剧",g:["律政","剧情","治愈"],h:662.1,mn:"全剧累计",cast:["朴恩斌","姜泰伍"],d:"自闭症谱系天才律师禹英禑以独特视角破解案件，「我的名字是禹英禑」风靡全球。温暖治愈的律政神剧，获国际艾美奖提名。",k:1},
+{r:27,t:"The Glory",cn:"黑暗荣耀",y:2022,ys:"2022–2023",c:"韩国",lg:"韩语",ty:"连续剧",g:["复仇","剧情","惊悚"],h:561,mn:"全剧累计",cast:["宋慧乔","李到晛","林智妍","廉惠兰"],d:"文同恩蛰伏十八年，向高中霸凌者展开精密复仇。金银淑编剧，两季均登全球非英语榜第一，复仇爽剧天花板。",k:1},
+{r:28,t:"13 Reasons Why",cn:"十三个原因",y:2017,ys:"2017–2020",c:"美国",lg:"英语",ty:"连续剧",g:["青春","剧情","悬疑"],h:475.6,mn:"第1季 · 91天",cast:["迪兰·明奈特","凯瑟琳·兰福德"],d:"高中生汉娜自杀后留下十三盘录音带，逐一揭示将她推向绝境的人与事，引发全球青少年心理健康讨论。"},
+{r:29,t:"Maid",cn:"女佣",y:2021,ys:"2021",c:"美国",lg:"英语",ty:"限定剧",g:["剧情","家庭"],h:469.1,mn:"限定剧 · 91天",cast:["玛格丽特·库里","安迪·麦克道威尔"],d:"单亲妈妈为逃离家暴靠做女佣养活女儿，真实动人的底层女性奋斗史，口碑与收视双丰收。"},
+{r:30,t:"You",cn:"你（安眠书店）",y:2018,ys:"2018–2025",c:"美国",lg:"英语",ty:"连续剧",g:["惊悚","犯罪","剧情"],h:467.8,mn:"第3季 · 91天",cast:["佩恩·拜德格雷"],d:"迷人又危险的书店经理乔，以爱为名的跟踪与谋杀。五季心理惊悚长跑，2025年完结。"},
+{r:31,t:"Monsters: The Lyle and Erik Menendez Story",cn:"怪物：梅内德斯兄弟的故事",y:2024,ys:"2024",c:"美国",lg:"英语",ty:"限定剧",g:["犯罪","剧情"],cast:["尼古拉斯·亚历山大·查韦斯","库珀·科赫","哈维尔·巴登"],d:"瑞恩·墨菲「怪物」系列第二季，重现1989年梅内德斯兄弟弑亲案及世纪庭审风暴。"},
+{r:32,t:"The Crown",cn:"王冠",y:2016,ys:"2016–2023",c:"英国",lg:"英语",ty:"连续剧",g:["历史","剧情"],cast:["克莱尔·芙伊","奥利维娅·科尔曼","艾美达·斯丹顿"],d:"Netflix旗舰英剧，六季再现伊丽莎白二世在位数十年的王室风云与英国社会变迁，艾美奖常客。"},
+{r:33,t:"Ozark",cn:"黑钱胜地",y:2017,ys:"2017–2022",c:"美国",lg:"英语",ty:"连续剧",g:["犯罪","剧情","惊悚"],cast:["杰森·贝特曼","劳拉·琳妮","朱莉娅·加纳"],d:"财务顾问举家迁往奥沙克湖区为毒枭洗钱，越陷越深的犯罪家族史，冷色调罪案剧标杆。"},
+{r:34,t:"Inventing Anna",cn:"虚构安娜",y:2022,ys:"2022",c:"美国",lg:"英语",ty:"限定剧",g:["剧情","犯罪"],cast:["朱莉娅·加纳"],d:"假名媛安娜·德尔维诈骗纽约上流圈的真实事件改编，珊达·莱梅斯打造，朱莉娅·加纳神级口音出圈。"},
+{r:35,t:"One Piece",cn:"海贼王（真人版）",y:2023,ys:"2023–",c:"美国",lg:"英语",ty:"连续剧",g:["冒险","动作","奇幻"],cast:["伊纳基·戈多伊","新田真剑佑","埃米莉·拉德"],d:"尾田荣一郎漫画真人化：路飞率草帽一伙扬帆出海寻找ONE PIECE，打破「漫改魔咒」，上线即登顶全球。"},
+{r:36,t:"Arcane",cn:"英雄联盟：双城之战",y:2021,ys:"2021–2024",c:"美国",lg:"英语",ty:"动画",g:["动画","科幻","动作"],cast:["海莉·斯坦菲尔德","艾拉·珀内尔"],d:"英雄联盟衍生动画神作：蔚与金克丝姐妹在皮尔特沃夫与祖安的对立中走向决裂，IMDb评分最高的动画剧集之一。"},
+{r:37,t:"Beef",cn:"怒呛人生",y:2023,ys:"2023–",c:"美国",lg:"英语",ty:"限定剧",g:["喜剧","剧情"],cast:["史蒂文·元","黄阿丽"],d:"一场路怒引发的互相报复，荒诞黑色喜剧下是亚裔的生存焦虑。横扫艾美奖限定剧类全部大奖。"},
+{r:38,t:"House of Cards",cn:"纸牌屋",y:2013,ys:"2013–2018",c:"美国",lg:"英语",ty:"连续剧",g:["政治","剧情"],cast:["凯文·史派西","罗宾·怀特"],d:"Netflix首部原创自制剧：权谋政客弗兰克·安德伍德的登顶之路，开启流媒体原创时代。"},
+{r:39,t:"Orange Is the New Black",cn:"女子监狱",y:2013,ys:"2013–2019",c:"美国",lg:"英语",ty:"连续剧",g:["喜剧","剧情","犯罪"],cast:["泰勒·席林","劳拉·普莱潘"],d:"派珀因十年前运毒入狱，女子监狱众生相交织出笑泪群像，Netflix早期王牌剧，七季完结。"},
+{r:40,t:"Black Mirror",cn:"黑镜",y:2011,ys:"2011–2025",c:"英国",lg:"英语",ty:"连续剧",g:["科幻","惊悚","剧情"],cast:["群星（单元剧）"],d:"查理·布鲁克打造的科技寓言诗选剧，每集独立故事审视科技对人性的异化，《圣朱尼佩洛》等单集成经典。"},
+{r:41,t:"Narcos",cn:"毒枭",y:2015,ys:"2015–2021",c:"美国",lg:"英语",ty:"连续剧",g:["犯罪","剧情","历史"],cast:["瓦格纳·马拉","佩德罗·帕斯卡"],d:"再现巴勃罗·埃斯科瓦尔与麦德林集团的兴衰，半纪录片式拍摄，瓦格纳·马拉演活世纪毒王。含《毒枭：墨西哥》系列。"},
+{r:42,t:"Mindhunter",cn:"心灵猎人",y:2017,ys:"2017–2019",c:"美国",lg:"英语",ty:"连续剧",g:["犯罪","剧情","悬疑"],cast:["乔纳森·格罗夫","霍特·麦克卡兰尼"],d:"大卫·芬奇执导：FBI行为科学组探员访谈连环杀手、建立犯罪侧写学，冷峻克制的心理刑侦神剧。"},
+{r:43,t:"The Umbrella Academy",cn:"伞学院",y:2019,ys:"2019–2024",c:"美国",lg:"英语",ty:"连续剧",g:["科幻","动作","喜剧"],cast:["艾利奥特·佩吉","汤姆·霍珀"],d:"43名同日诞生的超能力婴儿被富豪收养， dysfunctional 家族一次次阻止世界末日，共四季完结。"},
+{r:44,t:"Lucifer",cn:"路西法",y:2016,ys:"2016–2021",c:"美国",lg:"英语",ty:"连续剧",g:["奇幻","犯罪","喜剧"],cast:["汤姆·艾利斯","劳伦·日尔曼"],d:"地狱之王路西法厌倦统治来到洛杉矶开夜店，还兼职协助警方破案。DC衍生剧，被Netflix救活后大火。"},
+{r:45,t:"Sex Education",cn:"性爱自修室",y:2019,ys:"2019–2023",c:"英国",lg:"英语",ty:"连续剧",g:["喜剧","青春","剧情"],cast:["阿萨·巴特菲尔德","艾玛·麦基"],d:"莫代尔高中的地下性治疗诊所开张，奥蒂斯与同学们的青春困惑。英式幽默包裹的性教育成长剧，四季完结。"},
+{r:46,t:"Cobra Kai",cn:"眼镜蛇",y:2018,ys:"2018–2025",c:"美国",lg:"英语",ty:"连续剧",g:["动作","喜剧","剧情"],cast:["拉尔夫·马基奥","威廉·泽布卡"],d:"《龙威小子》34年后：约翰尼重开眼镜蛇道场，与丹尼尔的新仇旧恨延续六季，情怀与热血并存。"},
+{r:47,t:"Outer Banks",cn:"外滩探秘",y:2020,ys:"2020–",c:"美国",lg:"英语",ty:"连续剧",g:["冒险","动作","青春"],cast:["蔡斯·斯托克斯","玛德琳·克莱因"],d:"北卡外滩少年团追寻失踪宝藏与父亲下落，「POGUE」帮派的夏日冒险青春剧。"},
+{r:48,t:"Virgin River",cn:"维琴河",y:2019,ys:"2019–",c:"美国",lg:"英语",ty:"连续剧",g:["爱情","剧情"],cast:["亚历山德拉·布雷肯里奇","马丁·亨德森"],d:"护士梅琳达为疗愈创伤搬到北加州小镇维琴河，温馨慢节奏的爱情治愈剧，Netflix最长寿剧集之一。"},
+{r:49,t:"Ginny & Georgia",cn:"金妮与乔治娅",y:2021,ys:"2021–",c:"美国",lg:"英语",ty:"连续剧",g:["剧情","喜剧","家庭"],cast:["布莱恩妮·豪伊","安东尼娅·金特里"],d:"年轻妈妈乔治娅带着两个孩子定居新英格兰小镇，光鲜外表下秘密重重，家庭剧与犯罪悬疑混搭。"},
+{r:50,t:"Emily in Paris",cn:"艾米丽在巴黎",y:2020,ys:"2020–",c:"美国",lg:"英语",ty:"连续剧",g:["喜剧","爱情","时尚"],cast:["莉莉·柯林斯"],d:"芝加哥女孩艾米丽空降巴黎营销公司，法式浪漫与文化冲撞的时尚轻喜剧。"},
+{r:51,t:"The Diplomat",cn:"头号外交官",y:2023,ys:"2023–",c:"美国",lg:"英语",ty:"连续剧",g:["政治","惊悚","剧情"],cast:["凯丽·拉塞尔","卢夫斯·塞维尔"],d:"驻英大使凯特在国际危机与婚姻裂痕间走钢丝的政治惊悚剧。"},
+{r:52,t:"The Lincoln Lawyer",cn:"林肯律师",y:2022,ys:"2022–",c:"美国",lg:"英语",ty:"连续剧",g:["律政","犯罪","剧情"],cast:["曼努埃尔·加西亚-鲁尔福"],d:"在林肯车后座办公的洛杉矶辩护律师米奇·哈勒，迈克尔·康奈利小说改编的律政爽剧。"},
+{r:53,t:"Avatar: The Last Airbender",cn:"降世神通：最后的气宗",y:2024,ys:"2024–",c:"美国",lg:"英语",ty:"连续剧",g:["奇幻","冒险","动作"],cast:["戈登·科米尔","基娅文提奥","伊恩·奥斯利"],d:"经典动画真人化：气和族少年安昂觉醒为降世神通，踏上对抗火烈国的救世之旅。"},
+{r:54,t:"Ripley",cn:"雷普利",y:2024,ys:"2024",c:"美国",lg:"英语",ty:"限定剧",g:["犯罪","惊悚","剧情"],cast:["安德鲁·斯科特"],d:"天才骗子汤姆·雷普利在1960年代意大利的黑白影像中上演优雅杀局，获艾美奖最佳导演。"},
+{r:55,t:"3 Body Problem",cn:"三体",y:2024,ys:"2024–",c:"美国",lg:"英语",ty:"连续剧",g:["科幻","悬疑","剧情"],cast:["约翰·布莱德利","艾莎·冈萨雷斯","王汉斌"],d:"刘慈欣科幻巨著Netflix版：纳米科学家与警官卷入外星文明入侵倒计时，《权力的游戏》主创打造。"},
+{r:56,t:"The Gentlemen",cn:"绅士们",y:2024,ys:"2024–",c:"英国",lg:"英语",ty:"连续剧",g:["犯罪","喜剧","动作"],cast:["提奥·詹姆斯","卡雅·斯考达里奥"],d:"盖·里奇剧版：贵族公子继承家族大麻帝国，与毒枭、吉普赛人周旋的英伦犯罪喜剧。"},
+{r:57,t:"Griselda",cn:"格丽塞尔达",y:2024,ys:"2024",c:"美国",lg:"英语",ty:"限定剧",g:["犯罪","剧情"],cast:["索菲娅·维加拉"],d:"索菲娅·维加拉颠覆出演「可卡因教母」格丽塞尔达·布兰科，迈阿密毒品帝国的崛起与覆灭。"},
+{r:58,t:"The Perfect Couple",cn:"模范爱侣",y:2024,ys:"2024",c:"美国",lg:"英语",ty:"限定剧",g:["悬疑","剧情"],cast:["妮可·基德曼","列维·施瑞博尔"],d:"楠塔基特岛豪门婚礼突发命案，完美家庭表象下人人可疑。"},
+{r:59,t:"Nobody Wants This",cn:"天作不合的我们",y:2024,ys:"2024–",c:"美国",lg:"英语",ty:"连续剧",g:["喜剧","爱情"],cast:["克里斯汀·贝尔","亚当·布罗迪"],d:"无神论性话题播主与犹太教拉比的反差爱情喜剧，2024年最甜美剧。"},
+{r:60,t:"A Man on the Inside",cn:"新手老卧底",y:2024,ys:"2024–",c:"美国",lg:"英语",ty:"连续剧",g:["喜剧","剧情"],cast:["特德·丹森"],d:"鳏居老教授受雇潜入养老院当卧底侦探，温暖治愈的老年喜剧，《善地》主创打造。"},
+{r:61,t:"Dark",cn:"暗黑",y:2017,ys:"2017–2020",c:"德国",lg:"德语",ty:"连续剧",g:["科幻","悬疑","剧情"],cast:["路易斯·霍夫曼","丽莎·维卡里"],d:"温登小镇儿童失踪案牵出四代家族与时空穿越的莫比乌斯环，德国神剧、烧脑科幻巅峰，三季完美闭环。"},
+{r:62,t:"1899",cn:"1899",y:2022,ys:"2022",c:"德国",lg:"德语",ty:"连续剧",g:["悬疑","科幻","恐怖"],cast:["艾米丽·比查姆"],d:"《暗黑》团队打造：移民邮轮在海上遭遇神秘幽灵船，多语种群像悬疑剧。"},
+{r:63,t:"Barbarians",cn:"蛮战",y:2020,ys:"2020–2022",c:"德国",lg:"德语",ty:"连续剧",g:["历史","动作","剧情"],cast:["劳伦斯·鲁波"],d:"公元9年条顿堡森林战役：阿米尼乌斯率日耳曼部落伏击罗马军团，德国历史战争剧。"},
+{r:64,t:"Fauda",cn:"高墙边的混乱",y:2015,ys:"2015–2023",c:"以色列",lg:"希伯来语",ty:"连续剧",g:["动作","惊悚","剧情"],cast:["利奥·拉兹"],d:"以色列反恐剧：特工小组追捕哈马斯头目，巴以冲突双面视角，真实冷峻。"},
+{r:65,t:"Alice in Borderland",cn:"弥留之国的爱丽丝",y:2020,ys:"2020–2025",c:"日本",lg:"日语",ty:"连续剧",g:["科幻","惊悚","生存"],cast:["山崎贤人","土屋太凤"],d:"被困空无一人的东京，以性命为赌注闯关「游戏」。生存题材日剧标杆，三季完结。"},
+{r:66,t:"First Love",cn:"初恋",y:2022,ys:"2022",c:"日本",lg:"日语",ty:"连续剧",g:["爱情","剧情"],cast:["佐藤健","满岛光"],d:"跨越二十年的初恋物语，宇多田光名曲《First Love》灵感之作，唯美催泪。"},
+{r:67,t:"The Naked Director",cn:"全裸导演",y:2019,ys:"2019–2021",c:"日本",lg:"日语",ty:"连续剧",g:["剧情","传记","喜剧"],cast:["山田孝之"],d:"山田孝之饰演「AV帝王」村西透，昭和末年的欲望与癫狂，大尺度日本行业传记剧。"},
+{r:68,t:"Sacred Games",cn:"神圣游戏",y:2018,ys:"2018–2019",c:"印度",lg:"印地语",ty:"连续剧",g:["犯罪","惊悚","剧情"],cast:["赛义夫·阿里·汗","纳瓦祖丁·席迪圭"],d:"Netflix首部印度原创剧：孟买警官收到神隐黑帮大佬的25天灭城警告。"},
+{r:69,t:"Delhi Crime",cn:"德里罪案",y:2019,ys:"2019–",c:"印度",lg:"印地语",ty:"连续剧",g:["犯罪","剧情"],cast:["莎法莉·沙"],d:"改编自2012年德里黑公交案，女警督带队追凶，首获国际艾美奖最佳剧集的印度剧。"},
+{r:70,t:"Vikings: Valhalla",cn:"维京传奇：英灵神殿",y:2022,ys:"2022–2024",c:"美国",lg:"英语",ty:"连续剧",g:["历史","动作","冒险"],cast:["山姆·科利特","弗里达·古斯塔夫松"],d:"《维京传奇》百年后：莱夫·埃里克松与弗雷迪斯的传奇，维京时代最后的黄金岁月。"},
+{r:71,t:"The Last Kingdom",cn:"最后的王国",y:2015,ys:"2015–2022",c:"英国",lg:"英语",ty:"连续剧",g:["历史","动作","剧情"],cast:["亚历山大·德雷蒙"],d:"撒克逊贵族乌特雷德被维京人养大，在英格兰统一战争中抉择身份，五季史诗收官。"},
+{r:72,t:"The Sandman",cn:"睡魔",y:2022,ys:"2022–2025",c:"美国",lg:"英语",ty:"连续剧",g:["奇幻","剧情","恐怖"],cast:["汤姆·斯图里奇"],d:"尼尔·盖曼漫画改编：梦境之王墨菲斯被囚百年后重建梦域，暗黑奇幻视觉盛宴。"},
+{r:73,t:"Shadow and Bone",cn:"太阳召唤",y:2021,ys:"2021–2023",c:"美国",lg:"英语",ty:"连续剧",g:["奇幻","冒险","剧情"],cast:["李梅","本·巴恩斯"],d:"格里莎宇宙：孤儿制图师阿丽娜觉醒召唤太阳之力，对抗暗影黑幕的奇幻冒险。"},
+{r:74,t:"Sweet Tooth",cn:"鹿角男孩",y:2021,ys:"2021–2024",c:"美国",lg:"英语",ty:"连续剧",g:["奇幻","冒险","剧情"],cast:["克里斯蒂安·康佛瑞"],d:"末日疫后人兽混血儿格斯的寻母之旅，童话质感的温情末世剧，小罗伯特·唐尼监制。"},
+{r:75,t:"Russian Doll",cn:"轮回派对",y:2019,ys:"2019–2022",c:"美国",lg:"英语",ty:"连续剧",g:["喜剧","科幻","剧情"],cast:["娜塔莎·雷昂"],d:"娜迪亚在生日夜陷入死亡循环，纽约版「土拨鼠之日」，娜塔莎·雷昂自编自演。"},
+{r:76,t:"Dead to Me",cn:"麻木不仁",y:2019,ys:"2019–2022",c:"美国",lg:"英语",ty:"连续剧",g:["喜剧","剧情","悬疑"],cast:["克里斯蒂娜·艾伯盖特","琳达·卡德里尼"],d:"丧夫寡妇与肇事逃逸者在互助会相遇成为闺蜜，黑色喜剧外壳下的罪与赎。"},
+{r:77,t:"Grace and Frankie",cn:"同妻俱乐部",y:2015,ys:"2015–2022",c:"美国",lg:"英语",ty:"连续剧",g:["喜剧","家庭"],cast:["简·方达","莉莉·汤姆林"],d:"两位七旬老太太因丈夫出柜并相爱而被迫同居、重启人生，Netflix最长寿喜剧（七季）。"},
+{r:78,t:"The Haunting of Hill House",cn:"鬼入侵",y:2018,ys:"2018",c:"美国",lg:"英语",ty:"连续剧",g:["恐怖","剧情","悬疑"],cast:["米希尔·赫伊斯曼","卡拉·古奇诺"],d:"迈克·弗拉纳根打造：克雷恩一家五兄妹与希尔大宅亡灵的跨时空纠缠，恐怖外壳下的家庭悲歌。"},
+{r:79,t:"Midnight Mass",cn:"午夜弥撒",y:2021,ys:"2021",c:"美国",lg:"英语",ty:"限定剧",g:["恐怖","剧情"],cast:["扎克·吉尔福德","凯特·西格尔"],d:"孤岛小镇迎来神秘神父，神迹与恐怖并行，信仰与救赎的哥特式宗教恐怖诗。"},
+{r:80,t:"Unbelievable",cn:"难以置信",y:2019,ys:"2019",c:"美国",lg:"英语",ty:"限定剧",g:["犯罪","剧情"],cast:["凯特琳·德弗","托妮·科莱特"],d:"少女报案被性侵却遭质疑撤案，两位女警跨州追缉连环强奸犯。真实事件改编，克制而有力。"},
+{r:81,t:"When They See Us",cn:"有色眼镜",y:2019,ys:"2019",c:"美国",lg:"英语",ty:"限定剧",g:["犯罪","剧情","历史"],cast:["贾雷尔·杰罗姆"],d:"改编自「中央公园五人案」：五名少数族裔少年被冤入狱，对美国司法种族问题的控诉之作。"},
+{r:82,t:"Daredevil",cn:"夜魔侠",y:2015,ys:"2015–2018",c:"美国",lg:"英语",ty:"连续剧",g:["动作","犯罪","超级英雄"],cast:["查理·考克斯","文森特·多诺费奥"],d:"盲人律师马特·默多克白天上法庭、夜晚行侠地狱厨房，漫威Netflix时代巅峰之作。"},
+{r:83,t:"Jessica Jones",cn:"杰西卡·琼斯",y:2015,ys:"2015–2019",c:"美国",lg:"英语",ty:"连续剧",g:["犯罪","剧情","超级英雄"],cast:["克里斯滕·里特"],d:"私家侦探杰西卡对抗精神控制者基尔格雷夫，超级英雄外衣下的创伤幸存者故事。"},
+{r:84,t:"BoJack Horseman",cn:"马男波杰克",y:2014,ys:"2014–2020",c:"美国",lg:"英语",ty:"动画",g:["动画","喜剧","剧情"],cast:["威尔·阿奈特","艾丽森·布里"],d:"过气明星马男的好莱坞浮沉录，丧文化动画神剧，对抑郁与自我的深刻解剖。"},
+{r:85,t:"Love, Death & Robots",cn:"爱，死亡和机器人",y:2019,ys:"2019–2025",c:"美国",lg:"英语",ty:"动画",g:["动画","科幻","恐怖"],cast:["群星（单元剧）"],d:"大卫·芬奇监制的成人动画短片集，科幻、恐怖、怪诞风格的视觉实验盛宴。"},
+{r:86,t:"Locke & Key",cn:"致命钥匙",y:2020,ys:"2020–2022",c:"美国",lg:"英语",ty:"连续剧",g:["奇幻","恐怖","剧情"],cast:["达比·斯坦奇菲尔德"],d:"洛克家三兄妹在祖传老宅发现魔法钥匙，开启异界之门，乔·希尔漫画改编。"},
+{r:87,t:"Big Mouth",cn:"大嘴巴",y:2017,ys:"2017–2025",c:"美国",lg:"英语",ty:"动画",g:["动画","喜剧","青春"],cast:["尼克·克罗尔","约翰·木兰尼"],d:"青春期荷尔蒙怪作祟的少年成长动画喜剧，Netflix最长寿成人动画。"},
+{r:88,t:"Crash Landing on You",cn:"爱的迫降",y:2019,ys:"2019–2020",c:"韩国",lg:"韩语",ty:"连续剧",g:["爱情","剧情","喜剧"],cast:["玄彬","孙艺珍"],d:"韩国财阀千金滑翔伞事故迫降朝鲜，与朝鲜军官跨国相恋。tvN历代收视传奇、亚洲现象级爱情剧，主演因戏结缘成婚。",k:1},
+{r:89,t:"Kingdom",cn:"王国（李尸朝鲜）",y:2019,ys:"2019–2021",c:"韩国",lg:"韩语",ty:"连续剧",g:["丧尸","历史","惊悚"],cast:["朱智勋","裴斗娜","柳承龙"],d:"朝鲜王朝丧尸瘟疫爆发，世子李苍追查生死草之谜。古装+丧尸的类型开创之作，金恩熙编剧。",k:1},
+{r:90,t:"Sweet Home",cn:"甜蜜家园",y:2020,ys:"2020–2024",c:"韩国",lg:"韩语",ty:"连续剧",g:["怪物","惊悚","动作"],cast:["宋江","李阵郁","李诗英"],d:"公寓住户突遭怪物化末日，自闭少年车贤秀在欲望与怪物间挣扎。网漫改编、特效大片级韩剧，三季完结。",k:1},
+{r:91,t:"Itaewon Class",cn:"梨泰院Class",y:2020,ys:"2020",c:"韩国",lg:"韩语",ty:"连续剧",g:["剧情","励志","爱情"],cast:["朴叙俊","金多美"],d:"朴世路为父复仇，在梨泰院开酒馆对抗餐饮财阀。热血创业+反财阀爽剧，JTBC历代收视前列。",k:1},
+{r:92,t:"Hospital Playlist",cn:"机智医生生活",y:2020,ys:"2020–2021",c:"韩国",lg:"韩语",ty:"连续剧",g:["医疗","剧情","治愈"],cast:["曹政奭","柳演锡","郑敬淏","田美都"],d:"律帝医院99届五人帮的医生日常，手术台与乐队排练交织。申元浩导演的治愈系医疗神剧。",k:1},
+{r:93,t:"Vincenzo",cn:"黑道律师文森佐",y:2021,ys:"2021",c:"韩国",lg:"韩语",ty:"连续剧",g:["犯罪","喜剧","剧情"],cast:["宋仲基","全汝彬"],d:"意大利黑手党顾问律师文森佐以恶制恶清算韩国财阀，黑色幽默动作爽剧。",k:1},
+{r:94,t:"Hometown Cha-Cha-Cha",cn:"海岸村恰恰恰",y:2021,ys:"2021",c:"韩国",lg:"韩语",ty:"连续剧",g:["爱情","喜剧","治愈"],cast:["金宣虎","申敏儿"],d:"牙医尹慧珍来到公辰海边小村开诊所，与万能「洪班长」的慢生活爱情，治愈系天花板。",k:1},
+{r:95,t:"Hellbound",cn:"地狱公使",y:2021,ys:"2021–2024",c:"韩国",lg:"韩语",ty:"连续剧",g:["惊悚","奇幻","剧情"],cast:["刘亚仁","金贤珠"],d:"釜山街头突现地狱使者宣告死亡时刻，邪教趁乱崛起。延尚昊执导的宗教惊悚寓言。",k:1},
+{r:96,t:"D.P.",cn:"D.P：逃兵追缉令",y:2021,ys:"2021–2023",c:"韩国",lg:"韩语",ty:"连续剧",g:["剧情","犯罪","军旅"],cast:["丁海寅","具教焕"],d:"宪兵逃兵追缉组成员直面军中霸凌黑暗，现实题材韩剧力作，两季口碑爆发并推动社会讨论。",k:1},
+{r:97,t:"Move to Heaven",cn:"Move to Heaven：我是遗物整理师",y:2021,ys:"2021",c:"韩国",lg:"韩语",ty:"连续剧",g:["剧情","治愈"],cast:["李帝勋","汤峻相"],d:"遗物整理公司「Move to Heaven」透过遗物讲述逝者的未完成人生，泪腺崩坏之作。",k:1},
+{r:98,t:"My Name",cn:"以吾之名",y:2021,ys:"2021",c:"韩国",lg:"韩语",ty:"连续剧",g:["动作","犯罪","复仇"],cast:["韩素希","朴熙顺"],d:"尹智友为父报仇潜入贩毒集团做卧底，韩素希转型的暗黑动作复仇剧。",k:1},
+{r:99,t:"The Silent Sea",cn:"寂静之海",y:2021,ys:"2021",c:"韩国",lg:"韩语",ty:"连续剧",g:["科幻","惊悚","悬疑"],cast:["裴斗娜","孔刘"],d:"精英小队登月回收神秘样本，月球基地的生存科幻惊悚剧。",k:1},
+{r:100,t:"Love Alarm",cn:"恋爱铃",y:2019,ys:"2019–2021",c:"韩国",lg:"韩语",ty:"连续剧",g:["爱情","青春","科幻"],cast:["金所泫","宋江","郑家蓝"],d:"手机APP「恋爱铃」能探测10米内喜欢你的人，科技时代的青春三角恋。",k:1},
+{r:101,t:"Extracurricular",cn:"人间课堂",y:2020,ys:"2020",c:"韩国",lg:"韩语",ty:"连续剧",g:["犯罪","剧情","青春"],cast:["金东希","朴柱炫"],d:"模范生暗中经营非法中介生意，少年犯罪题材的现实主义韩剧，暗黑惊艳。",k:1},
+{r:102,t:"Mr. Sunshine",cn:"阳光先生",y:2018,ys:"2018",c:"韩国",lg:"韩语",ty:"连续剧",g:["历史","爱情","剧情"],cast:["李秉宪","金泰梨"],d:"1871年辛未洋扰背景下的朝鲜义兵抗日史诗，金银淑编剧，电影级画面与制作。",k:1},
+{r:103,t:"Reply 1988",cn:"请回答1988",y:2015,ys:"2015–2016",c:"韩国",lg:"韩语",ty:"连续剧",g:["家庭","青春","剧情"],cast:["李惠利","朴宝剑","柳俊烈"],d:"双门洞五户人家的1988年，邻里亲情与青春群像的国民神剧，豆瓣评分最高的韩剧之一。",k:1},
+{r:104,t:"Business Proposal",cn:"社内相亲",y:2022,ys:"2022",c:"韩国",lg:"韩语",ty:"连续剧",g:["爱情","喜剧"],cast:["安孝燮","金世正"],d:"小职员替闺蜜相亲却遇上自家公司社长，契约恋爱的甜宠喜剧，2022年全球大热。",k:1},
+{r:105,t:"Twenty-Five Twenty-One",cn:"二十五，二十一",y:2022,ys:"2022",c:"韩国",lg:"韩语",ty:"连续剧",g:["青春","爱情","剧情"],cast:["金泰梨","南柱赫"],d:"1998年IMF时代，击剑少女罗希度与落魄富二代白易辰的青春物语，笑泪交织。",k:1},
+{r:106,t:"Our Blues",cn:"我们的蓝调",y:2022,ys:"2022",c:"韩国",lg:"韩语",ty:"连续剧",g:["剧情","家庭"],cast:["李秉宪","申敏儿","金宇彬","韩志旼"],d:"济州岛渔村群像剧，全明星阵容演绎平凡人的苦与暖，卢熙京编剧。",k:1},
+{r:107,t:"Alchemy of Souls",cn:"还魂",y:2022,ys:"2022–2023",c:"韩国",lg:"韩语",ty:"连续剧",g:["奇幻","爱情","动作"],cast:["李宰旭","郑素敏","高允贞"],d:"架空「大湖国」的换魂术引发命运纠葛，洪氏姐妹编剧的古装奇幻爱情剧。",k:1},
+{r:108,t:"Little Women",cn:"小小姐们",y:2022,ys:"2022",c:"韩国",lg:"韩语",ty:"连续剧",g:["悬疑","剧情"],cast:["金高银","南志铉","朴持厚"],d:"三姐妹卷入700亿韩元黑金漩涡，金希元导演的悬疑质感之作。",k:1},
+{r:109,t:"Narco-Saints",cn:"毒枭圣徒",y:2022,ys:"2022",c:"韩国",lg:"韩语",ty:"连续剧",g:["犯罪","动作","惊悚"],cast:["河正宇","黄政民","朴海秀"],d:"韩国企业家潜入苏里南毒枭集团做卧底，南美式黑帮大片质感。",k:1},
+{r:110,t:"Money Heist: Korea",cn:"纸钞屋：韩国篇",y:2022,ys:"2022",c:"韩国",lg:"韩语",ty:"连续剧",g:["犯罪","惊悚","悬疑"],cast:["刘智泰","朴海秀","全钟瑞"],d:"半岛统一经济区背景下的造币厂劫案，韩版《纸钞屋》的本土化改编。",q:"Money Heist Korea",k:1},
+{r:111,t:"Single's Inferno",cn:"单身即地狱",y:2021,ys:"2021–2025",c:"韩国",lg:"韩语",ty:"真人秀",g:["真人秀","恋爱"],cast:["参赛者群像"],d:"俊男美女困守荒岛，配对成功才能去天堂岛约会。Netflix首部韩国恋爱真人秀，全球现象级，已出四季。",k:1},
+{r:112,t:"Physical: 100",cn:"体能之巅：百人大挑战",y:2023,ys:"2023–2024",c:"韩国",lg:"韩语",ty:"真人秀",g:["真人秀","竞技"],cast:["百名体能强者"],d:"100名体能强者角逐3亿韩元与「最完美肉体」，韩综体能竞技巅峰，登顶全球非英语榜。",k:1},
+{r:113,t:"The Devil's Plan",cn:"魔鬼的计谋",y:2023,ys:"2023–2025",c:"韩国",lg:"韩语",ty:"真人秀",g:["真人秀","智斗"],cast:["河锡辰","夫胜宽"],d:"12名玩家合宿7天斗智博弈，高智商生存真人秀，郑中渊PD出品，口碑封神。",k:1},
+{r:114,t:"Gyeongseong Creature",cn:"京城怪物",y:2023,ys:"2023–2024",c:"韩国",lg:"韩语",ty:"连续剧",g:["惊悚","历史","动作"],cast:["朴叙俊","韩素希"],d:"1945年京城，典当铺老板与寻人专家对抗人体实验诞生的怪物，抗日+怪物的年代惊悚剧。",k:1},
+{r:115,t:"My Demon",cn:"与恶魔有约",y:2023,ys:"2023–2024",c:"韩国",lg:"韩语",ty:"连续剧",g:["爱情","奇幻","喜剧"],cast:["宋江","金裕贞"],d:"恶魔都到曦与财阀千金郑九元契约结婚，先婚后爱的奇幻罗曼史，2024上半年观看时长最高的韩剧之一。",k:1},
+{r:116,t:"King the Land",cn:"欢迎来到王之国",y:2023,ys:"2023",c:"韩国",lg:"韩语",ty:"连续剧",g:["爱情","喜剧"],cast:["李俊昊","林允儿"],d:"财阀继承人与酒店职员的欢喜冤家爱情，2023年浪漫喜剧收视与流媒体双料热门。",k:1},
+{r:117,t:"Destined with You",cn:"恋爱不可抗力",y:2023,ys:"2023",c:"韩国",lg:"韩语",ty:"连续剧",g:["爱情","奇幻","喜剧"],cast:["曹宝儿","金路云"],d:"公务员洪朝与律师张信裕的「不可抗力」咒术爱情喜剧。",k:1},
+{r:118,t:"Doona!",cn:"我的女神室友斗娜",y:2023,ys:"2023",c:"韩国",lg:"韩语",ty:"连续剧",g:["爱情","剧情"],cast:["裴秀智","梁世宗"],d:"隐退女团成员李斗娜与大学生李元俊的合租暧昧，网漫改编的梦幻爱情剧。",k:1},
+{r:119,t:"Mask Girl",cn:"假面女郎",y:2023,ys:"2023",c:"韩国",lg:"韩语",ty:"连续剧",g:["惊悚","剧情","犯罪"],cast:["高贤贞","林珍娜","安宰弘"],d:"「假面女郎」金貌美在容貌焦虑下的疯狂与救赎，三位女演员分饰同一角色的不同人生阶段。",k:1},
+{r:120,t:"Celebrity",cn:"绝世网红",y:2023,ys:"2023",c:"韩国",lg:"韩语",ty:"连续剧",g:["剧情","悬疑"],cast:["朴珪瑛","姜敏赫"],d:"一夜爆红的网红徐雅莉，揭开网红经济名利场的黑幕与代价。",k:1},
+{r:121,t:"Bloodhounds",cn:"猎犬",y:2023,ys:"2023",c:"韩国",lg:"韩语",ty:"连续剧",g:["动作","犯罪"],cast:["禹棹焕","李相二"],d:"拳击手兄弟联手打垮非法高利贷黑帮，硬核动作爽剧。",k:1},
+{r:122,t:"Black Knight",cn:"末日骑士",y:2023,ys:"2023",c:"韩国",lg:"韩语",ty:"连续剧",g:["科幻","动作"],cast:["金宇彬","宋承宪"],d:"雾霾末日下的传奇快递司机5-8，护送希望的科幻动作剧。",k:1},
+{r:123,t:"Queenmaker",cn:"造后者",y:2023,ys:"2023",c:"韩国",lg:"韩语",ty:"连续剧",g:["政治","剧情","复仇"],cast:["金喜爱","文素利"],d:"公关女王与「犀牛」人权律师联手扳倒财阀的女性复仇政治剧。",k:1},
+{r:124,t:"The 8 Show",cn:"第八个秀",y:2024,ys:"2024",c:"韩国",lg:"韩语",ty:"连续剧",g:["悬疑","剧情","生存"],cast:["柳俊烈","千玗嬉"],d:"密闭大楼里的8人奖金累积秀，时间就是金钱的阶层寓言式生存剧。",k:1},
+{r:125,t:"A Killer Paradox",cn:"杀人者的难堪",y:2024,ys:"2024",c:"韩国",lg:"韩语",ty:"连续剧",g:["犯罪","惊悚","黑色幽默"],cast:["崔宇植","孙锡久"],d:"意外杀人的大学生与执着刑警的猫鼠游戏，「杀一个坏人还是好人」的黑色寓言。",k:1},
+{r:126,t:"Parasyte: The Grey",cn:"寄生兽：灰色部队",y:2024,ys:"2024",c:"韩国",lg:"韩语",ty:"连续剧",g:["科幻","惊悚","动作"],cast:["全昭霓","具教焕"],d:"岩明均漫画韩国本土化：与半寄生兽「海蒂」共存对抗寄生兽组织，延尚昊团队打造，特效惊艳。",k:1},
+{r:127,t:"Hierarchy",cn:"名校的阶梯",y:2024,ys:"2024",c:"韩国",lg:"韩语",ty:"连续剧",g:["青春","悬疑","剧情"],cast:["卢正义","李彩玟"],d:"贵族高中转学生挑战金字塔顶端的青春悬疑剧。",k:1},
+{r:128,t:"Mr. Plankton",cn:"浮游先生",y:2024,ys:"2024",c:"韩国",lg:"韩语",ty:"连续剧",g:["爱情","剧情","公路"],cast:["禹棹焕","李瑜美"],d:"身患绝症的「浮游」男子与前女友的公路告别之旅，笑中带泪。",k:1},
+{r:129,t:"The Trunk",cn:"一箱情缘",y:2024,ys:"2024",c:"韩国",lg:"韩语",ty:"连续剧",g:["爱情","悬疑","剧情"],cast:["孔刘","徐玄振"],d:"婚姻介绍所的限时夫妻，湖边行李箱牵出的秘密爱情悬疑剧。",k:1},
+{r:130,t:"Love Next Door",cn:"妈妈朋友的儿子",y:2024,ys:"2024",c:"韩国",lg:"韩语",ty:"连续剧",g:["爱情","喜剧"],cast:["丁海寅","郑素敏"],d:"青梅竹马的「妈朋儿」与「妈朋女」成年后重逢的邻家罗曼史，2024年tvN热门。",k:1},
+{r:131,t:"Culinary Class Wars",cn:"黑白厨师",y:2024,ys:"2024–",c:"韩国",lg:"韩语",ty:"真人秀",g:["真人秀","美食"],cast:["白种元","安成宰"],d:"韩国料理阶级战：黑汤匙厨师挑战白汤匙名厨，2024年全球爆款韩综，登顶非英语榜。",k:1},
+{r:132,t:"Weak Hero Class 1",cn:"脆弱的英雄",y:2022,ys:"2022–",c:"韩国",lg:"韩语",ty:"连续剧",g:["校园","动作","剧情"],cast:["朴志训","崔显旭"],d:"模范生延时恩以脑力和工具对抗校园暴力，2025年登陆Netflix后全球翻红。",q:"Weak Hero",k:1},
+{r:133,t:"When Life Gives You Tangerines",cn:"苦尽柑来",y:2025,ys:"2025",c:"韩国",lg:"韩语",ty:"连续剧",g:["爱情","剧情","年代"],cast:["李知恩","朴宝剑","文素利","朴海俊"],d:"济州岛海女之女爱纯与梁宽植跨越半个世纪的爱情与人生，2025年催泪神剧，登顶全球非英语榜并获豆瓣9.5分。",k:1},
+{r:134,t:"Resident Playbook",cn:"机智住院医生生活",y:2025,ys:"2025",c:"韩国",lg:"韩语",ty:"连续剧",g:["医疗","剧情","青春"],cast:["高允贞","申诗雅"],d:"《机智医生生活》衍生剧：钟路律帝医院妇产科住院医生五人帮的成长日常。",k:1},
+{r:135,t:"Bon Appétit, Your Majesty",cn:"暴君的厨师",y:2025,ys:"2025",c:"韩国",lg:"韩语",ty:"连续剧",g:["爱情","喜剧","穿越"],cast:["林允儿","李彩玟"],d:"法国料理厨师穿越到朝鲜，用美食征服「暴君」大王。2025年tvN/Netflix热播爱情喜剧，登顶全球非英语榜。",q:"Bon Appetit Your Majesty",k:1}
+];
+
+/* ================= 工具函数 ================= */
+const $ = s => document.querySelector(s);
+const fmt = v => v==null ? "" : (v>=100 ? (v/100).toFixed(2).replace(/0+$/,"").replace(/\.$/,"")+" 亿" : (v*100).toFixed(0).replace(/(\d)(?=(\d{3})+$)/g,"$1,")+" 万");
+const metricText = s => {
+  if (s.v!=null) return {txt:`91天观看量 ${fmt(s.v)}`, note:s.mn||"", cls:""};
+  if (s.h!=null) return {txt:`观看时长 ${fmt(s.h)} 小时`, note:s.mn||"", cls:"blue"};
+  return null;
+};
+const PH_COLORS = [["#8b0000","#e50914"],["#0b3d91","#3ba7ff"],["#4a148c","#9c4dff"],["#1b5e20","#4caf50"],["#b26a00","#ffb300"],["#004d40","#26a69a"],["#880e4f","#ec407a"],["#263238","#78909c"]];
+const phBg = s => { const p = PH_COLORS[s.r % PH_COLORS.length]; return `linear-gradient(150deg,${p[0]},${p[1]})`; };
+
+/* ================= 海报加载（TVmaze → Wikipedia → 兜底卡片，localStorage缓存） ================= */
+const posterCache = {
+  get(id){ try{ return localStorage.getItem("nf_poster_"+id); }catch(e){ return null; } },
+  set(id,val){ try{ localStorage.setItem("nf_poster_"+id,val); }catch(e){} }
+};
+const loadQueue = []; let active = 0; const MAXC = 6;
+function enqueue(task){ loadQueue.push(task); pump(); }
+function pump(){
+  while(active < MAXC && loadQueue.length){
+    active++;
+    const t = loadQueue.shift();
+    t().finally(()=>{ active--; setTimeout(pump,120); });
+  }
+}
+/* 带超时的 fetch，避免个别域名挂起占满并发槽 */
+function tfetch(url, ms){
+  const ctrl = new AbortController();
+  const timer = setTimeout(()=>ctrl.abort(), ms||8000);
+  return fetch(url, {signal: ctrl.signal}).finally(()=>clearTimeout(timer));
+}
+async function fetchPosterURL(s){
+  const cached = posterCache.get(s.r);
+  if (cached) return cached === "NONE" ? null : cached;
+  const pickYear = s.y;
+  const q = encodeURIComponent(s.q || s.t);
+  const tryTvmaze = async (retried)=>{
+    const res = await tfetch(`https://api.tvmaze.com/search/shows?q=${q}`, 8000);
+    if (res.status === 429 && !retried){ await new Promise(r=>setTimeout(r,1800)); return tryTvmaze(true); } // 限流最多重试一次
+    if (!res.ok) return null;
+    const arr = await res.json();
+    if (!arr || !arr.length) return null;
+    let best = arr[0].show, bestScore = -1;
+    for (const it of arr.slice(0,6)){
+      const sh = it.show; let sc = 0;
+      const py = sh.premiered ? parseInt(sh.premiered.slice(0,4)) : null;
+      if (py === pickYear) sc += 4; else if (py && Math.abs(py-pickYear)<=1) sc += 1;
+      const qName = (s.q||s.t).toLowerCase().replace(/[^a-z0-9]/g,"");
+      const sName = (sh.name||"").toLowerCase().replace(/[^a-z0-9]/g,"");
+      if (sName === qName) sc += 3; else if (sName.includes(qName) || qName.includes(sName)) sc += 1;
+      if (sh.image) sc += 2;
+      if (sc > bestScore){ bestScore = sc; best = sh; }
+    }
+    return best.image && (best.image.medium || best.image.original) || null;
+  };
+  try{
+    const img = await tryTvmaze(false);
+    if (img){ posterCache.set(s.r, img); return img; }
+  }catch(e){}
+  // Wikipedia 兜底
+  const base = (s.q || s.t).replace(/ /g,"_");
+  for (const title of [base, base+"_(TV_series)"]){
+    try{
+      const res = await tfetch(`https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(title)}`, 6000);
+      if (res.ok){
+        const j = await res.json();
+        const src = j.thumbnail && j.thumbnail.source;
+        if (src && !src.endsWith(".svg")){ posterCache.set(s.r, src); return src; }
+      }
+    }catch(e){}
+  }
+  posterCache.set(s.r,"NONE");
+  return null;
+}
+
+/* ================= 卡片渲染 ================= */
+const grid = $("#grid");
+const cardMap = new Map();
+function makeCard(s){
+  const card = document.createElement("div");
+  card.className = "card"; card.dataset.r = s.r;
+
+  const pw = document.createElement("div"); pw.className = "poster-wrap";
+  const sk = document.createElement("div"); sk.className = "skeleton";
+  const ph = document.createElement("div"); ph.className = "ph"; ph.style.background = phBg(s);
+  const initial = (s.cn||s.t).trim().charAt(0);
+  ph.innerHTML = `<div class="big"></div><div class="cn"></div><div class="small">NETFLIX SERIES</div>`;
+  ph.querySelector(".big").textContent = initial;
+  ph.querySelector(".cn").textContent = s.cn;
+  const img = document.createElement("img"); img.loading = "lazy"; img.alt = s.cn;
+  const rank = document.createElement("div"); rank.className = "rank-badge"; rank.textContent = "#"+s.r;
+  pw.append(sk, ph, img, rank);
+  if (s.k){ const b=document.createElement("div"); b.className="kr-badge"; b.textContent="🇰🇷 韩剧"; pw.appendChild(b); }
+  if (s.off){ const b=document.createElement("div"); b.className="off-badge"; b.textContent="★ 官方历史TOP10"; pw.appendChild(b); }
+
+  const info = document.createElement("div"); info.className = "info";
+  const h3 = document.createElement("h3"); h3.textContent = s.cn;
+  const en = document.createElement("div"); en.className = "en"; en.textContent = s.t;
+  const meta = document.createElement("div"); meta.className = "meta";
+  meta.textContent = `${s.ys} · ${s.c} · ${s.ty}`;
+  info.append(h3, en, meta);
+  const m = metricText(s);
+  if (m){
+    const d = document.createElement("div"); d.className = "metric "+m.cls;
+    d.textContent = m.txt;
+    if (m.note){ const sp=document.createElement("span"); sp.className="note"; sp.textContent="· "+m.note; d.appendChild(sp); }
+    info.appendChild(d);
+  }
+  const tags = document.createElement("div"); tags.className = "tags";
+  s.g.slice(0,3).forEach(g=>{ const t=document.createElement("span"); t.className="tag"; t.textContent=g; tags.appendChild(t); });
+  info.appendChild(tags);
+  const cast = document.createElement("div"); cast.className = "cast";
+  const cb = document.createElement("b"); cb.textContent = "主演：";
+  cast.appendChild(cb); cast.appendChild(document.createTextNode(s.cast.join(" / ")));
+  info.appendChild(cast);
+  const desc = document.createElement("p"); desc.className = "desc"; desc.textContent = s.d;
+  info.appendChild(desc);
+
+  card.append(pw, info);
+  card.addEventListener("click", ()=>openModal(s));
+  cardMap.set(s.r, {card, img, sk, ph, s});
+  return card;
+}
+
+/* 懒加载海报：IntersectionObserver 为主，滚动扫描为兼容兜底 */
+function loadCardPoster(rec){
+  if (!rec || rec.loaded) return;
+  rec.loaded = true;
+  enqueue(async ()=>{
+    const url = await fetchPosterURL(rec.s);
+    if (url){
+      rec.img.decoding = "async";
+      rec.img.src = url;
+      const watchdog = setTimeout(()=>{ if(!rec.img.complete) { rec.img.src=""; rec.sk.remove(); } }, 15000);
+      rec.img.onload = ()=>{ clearTimeout(watchdog); rec.img.classList.add("ok"); rec.sk.remove(); };
+      rec.img.onerror = ()=>{ clearTimeout(watchdog); rec.sk.remove(); };
+    } else rec.sk.remove();
+  });
+}
+const io = new IntersectionObserver(entries=>{
+  for (const e of entries){
+    if (!e.isIntersecting) continue;
+    io.unobserve(e.target);
+    loadCardPoster(cardMap.get(+e.target.dataset.r));
+  }
+},{rootMargin:"600px"});
+let scanTimer=null;
+function lazyScan(){
+  const limit = window.innerHeight + 700;
+  document.querySelectorAll(".card").forEach(c=>{
+    const rec = cardMap.get(+c.dataset.r);
+    if (!rec || rec.loaded) return;
+    const b = c.getBoundingClientRect();
+    if (b.top < limit && b.bottom > -700) loadCardPoster(rec);
+  });
+}
+window.addEventListener("scroll", ()=>{ if(!scanTimer){ scanTimer=setTimeout(()=>{ scanTimer=null; lazyScan(); },250); } }, {passive:true});
+setTimeout(lazyScan, 1000);
+
+/* ================= 筛选 / 排序 / 搜索 ================= */
+let fRegion="all", fType="all", fGenre="all", fSort="hot", fSearch="";
+function render(){
+  let list = SHOWS.slice();
+  if (fRegion==="KR") list = list.filter(s=>s.k);
+  else if (fRegion==="EN") list = list.filter(s=>s.lg==="英语");
+  else if (fRegion==="OT") list = list.filter(s=>!s.k && s.lg!=="英语");
+  if (fType!=="all") list = list.filter(s=>s.ty===fType);
+  if (fGenre!=="all") list = list.filter(s=>s.g.includes(fGenre));
+  if (fSearch){
+    const q = fSearch.toLowerCase();
+    list = list.filter(s => (s.cn+s.t+s.cast.join("")+s.d+s.g.join("")).toLowerCase().includes(q));
+  }
+  if (fSort==="hot") list.sort((a,b)=>a.r-b.r);
+  else if (fSort==="year") list.sort((a,b)=>b.y-a.y || a.r-b.r);
+  else if (fSort==="views") list.sort((a,b)=>((b.v??(b.h?b.h/10:0))-(a.v??(a.h?a.h/10:0))));
+  else if (fSort==="name") list.sort((a,b)=>a.cn.localeCompare(b.cn,"zh"));
+
+  grid.innerHTML = "";
+  const frag = document.createDocumentFragment();
+  list.forEach(s=>frag.appendChild(makeCard(s)));
+  grid.appendChild(frag);
+  cardMap.forEach(rec=>{ rec.loaded=false; });
+  document.querySelectorAll(".card").forEach(c=>io.observe(c));
+  $("#count").textContent = `显示 ${list.length} / ${SHOWS.length} 部`;
+}
+
+document.querySelectorAll("[data-region]").forEach(b=>b.addEventListener("click",()=>{
+  document.querySelectorAll("[data-region]").forEach(x=>x.classList.remove("on"));
+  b.classList.add("on"); fRegion=b.dataset.region; render();
+}));
+document.querySelectorAll("[data-type]").forEach(b=>b.addEventListener("click",()=>{
+  document.querySelectorAll("[data-type]").forEach(x=>x.classList.remove("on"));
+  b.classList.add("on"); fType=b.dataset.type; render();
+}));
+$("#sortSel").addEventListener("change",e=>{ fSort=e.target.value; render(); });
+$("#genreSel").addEventListener("change",e=>{ fGenre=e.target.value; render(); });
+$("#search").addEventListener("input",e=>{ fSearch=e.target.value.trim(); render(); });
+
+/* 题材下拉 */
+(function(){
+  const set = new Set(); SHOWS.forEach(s=>s.g.forEach(g=>set.add(g)));
+  const sel = $("#genreSel");
+  [...set].sort((a,b)=>a.localeCompare(b,"zh")).forEach(g=>{
+    const o=document.createElement("option"); o.value=g; o.textContent=g; sel.appendChild(o);
+  });
+})();
+
+/* ================= 顶部统计 ================= */
+(function(){
+  const kr = SHOWS.filter(s=>s.k).length;
+  const off = SHOWS.filter(s=>s.off).length;
+  const countries = new Set(SHOWS.map(s=>s.c)).size;
+  $("#stats").innerHTML = `
+    <div class="stat"><b>${SHOWS.length}</b><span>收录剧集总数</span></div>
+    <div class="stat"><b><i>${kr}</i></b><span>其中韩剧数量</span></div>
+    <div class="stat"><b>${off}</b><span>官方历史TOP10在榜</span></div>
+    <div class="stat"><b>${countries}</b><span>覆盖国家/地区</span></div>
+    <div class="stat"><b>2013–2026</b><span>剧集年份跨度</span></div>`;
+})();
+
+/* ================= 官方TOP10 图表 ================= */
+(function(){
+  const wrap = $("#bars");
+  const max = CHART[0].v;
+  CHART.forEach((c,i)=>{
+    const row = document.createElement("div"); row.className="bar-row";
+    const name = document.createElement("div"); name.className="name";
+    name.innerHTML = `<span class="rk">${String(i+1).padStart(2,"0")}</span>`;
+    name.appendChild(document.createTextNode(c.name));
+    const track = document.createElement("div"); track.className="bar-track";
+    const fill = document.createElement("div"); fill.className="bar-fill"+(c.kr?" kr":"");
+    track.appendChild(fill);
+    const val = document.createElement("div"); val.className="bar-val"; val.textContent = fmt(c.v);
+    row.append(name, track, val); wrap.appendChild(row);
+    setTimeout(()=>{ fill.style.width = (c.v/max*100).toFixed(1)+"%"; }, 200 + i*90);
+  });
+})();
+
+/* ================= 韩剧专区 TOP10 ================= */
+(function(){
+  const row = $("#kdRow");
+  SHOWS.filter(s=>s.k).sort((a,b)=>a.r-b.r).slice(0,10).forEach((s,i)=>{
+    const item = document.createElement("div"); item.className="kd-item";
+    const medal = document.createElement("div"); medal.className="kd-medal"; medal.textContent = ["🥇","🥈","🥉"][i] || (i+1);
+    const h4 = document.createElement("h4"); h4.textContent = s.cn;
+    const en = document.createElement("div"); en.className="en"; en.textContent = `${s.t} · ${s.ys}`;
+    const m = metricText(s);
+    const md = document.createElement("div"); md.className="m"; md.textContent = m ? m.txt : "全球热播";
+    item.append(medal,h4,en,md);
+    item.addEventListener("click",()=>openModal(s));
+    row.appendChild(item);
+  });
+})();
+
+/* ================= 弹窗 ================= */
+const mask = $("#mask");
+function openModal(s){
+  $("#mTitle").textContent = s.cn;
+  $("#mEn").textContent = `${s.t} · ${s.ys}`;
+  $("#mMeta").textContent = `${s.c} · ${s.lg} · ${s.ty} · 综合排名 #${s.r}${s.off?" · ★ Netflix官方历史TOP10在榜":""}`;
+  const m = metricText(s);
+  const mm = $("#mMetric");
+  if (m){ mm.style.display="block"; mm.className="metric "+m.cls; mm.textContent = m.txt + (m.note?`（${m.note}）`:""); }
+  else mm.style.display="none";
+  const tags = $("#mTags"); tags.innerHTML="";
+  s.g.forEach(g=>{ const t=document.createElement("span"); t.className="tag"; t.textContent=g; tags.appendChild(t); });
+  $("#mCast").innerHTML = "";
+  const b=document.createElement("b"); b.textContent="主演："; $("#mCast").append(b, document.createTextNode(s.cast.join(" / ")));
+  $("#mDesc").textContent = s.d;
+  const img = $("#mImg"), ph = $("#mPh");
+  img.style.display="none"; img.src="";
+  ph.style.background = phBg(s); ph.style.display="flex";
+  ph.innerHTML = `<div class="big">${(s.cn||s.t).charAt(0)}</div><div class="cn">${s.cn}</div><div class="small">NETFLIX SERIES</div>`;
+  mask.classList.add("show");
+  document.body.style.overflow="hidden";
+  (async ()=>{
+    const url = await fetchPosterURL(s);
+    if (url){ img.src=url; img.onload=()=>{ img.style.display="block"; }; }
+  })();
+}
+$("#mClose").addEventListener("click",closeModal);
+mask.addEventListener("click",e=>{ if(e.target===mask) closeModal(); });
+document.addEventListener("keydown",e=>{ if(e.key==="Escape") closeModal(); });
+function closeModal(){ mask.classList.remove("show"); document.body.style.overflow=""; }
+
+/* ================= 回到顶部 ================= */
+const totop = $("#totop");
+window.addEventListener("scroll",()=>{ totop.style.display = window.scrollY>600 ? "block":"none"; });
+totop.addEventListener("click",()=>window.scrollTo({top:0,behavior:"smooth"}));
+
+/* 初始渲染 */
+render();
+</script>
+</body>
+</html>
