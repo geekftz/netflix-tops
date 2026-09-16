@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Netflix 韩剧 · 全类型 TOP 20 榜单</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  :root{
+    --bg:#0b0b0f; --bg2:#141419; --card:#18181f; --card2:#1f1f28;
+    --red:#e50914; --red2:#f6121d; --gold:#f5c518; --blue:#3ba7ff;
+    --txt:#f2f2f2; --sub:#9a9aa5; --line:#2a2a33;
+  }
+  html{ scroll-behavior:smooth; }
+  body{ background:var(--bg); color:var(--txt);
+    font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Hiragino Sans GB","Microsoft YaHei","Noto Sans CJK SC",sans-serif; }
+
+  /* ---------- 顶部 ---------- */
+  .topbar{ position:sticky; top:0; z-index:60; display:flex; align-items:center; gap:14px;
+    padding:12px 28px; background:rgba(11,11,15,.9); backdrop-filter:blur(12px); border-bottom:1px solid var(--line); }
+  .logo{ font-size:26px; font-weight:900; color:var(--red); letter-spacing:2px; font-style:italic; }
+  .topbar .sub{ color:var(--sub); font-size:13px; }
+
+  .hero{ padding:64px 28px 40px; text-align:center;
+    background:radial-gradient(1000px 420px at 50% -20%, rgba(229,9,20,.3), transparent 60%),
+               radial-gradient(700px 350px at 85% 0%, rgba(59,167,255,.14), transparent 60%), var(--bg); }
+  .hero .kr{ font-size:44px; }
+  .hero h1{ font-size:clamp(28px,4.4vw,48px); font-weight:900; margin-top:8px; }
+  .hero h1 em{ color:var(--red); font-style:normal; }
+  .hero p{ margin:14px auto 0; color:var(--sub); max-width:720px; line-height:1.8; font-size:14px; }
+  .stats{ display:flex; flex-wrap:wrap; justify-content:center; gap:14px; margin-top:28px; }
+  .stat{ background:rgba(24,24,31,.85); border:1px solid var(--line); border-radius:14px; padding:14px 24px; min-width:130px; }
+  .stat b{ display:block; font-size:26px; font-weight:900; color:#fff; }
+  .stat b i{ color:var(--red); font-style:normal; }
+  .stat span{ color:var(--sub); font-size:12px; }
+
+  /* ---------- 类型总览图 ---------- */
+  .overview{ padding:40px 28px 8px; max-width:1000px; margin:0 auto; }
+  .overview h2,.g-section h2{ font-size:22px; font-weight:800; display:flex; align-items:center; gap:10px; }
+  .overview h2::before,.g-section h2::before{ content:""; width:5px; height:22px; background:var(--red); border-radius:3px; }
+  .overview .tip,.g-section .tip{ color:var(--sub); font-size:12px; margin:8px 0 20px; }
+  .ov-row{ display:grid; grid-template-columns:110px 1fr 44px; align-items:center; gap:12px; margin-bottom:10px;
+    font-size:13px; cursor:pointer; }
+  .ov-row .gname{ text-align:right; color:#dcdce2; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .ov-row:hover .gname{ color:#fff; }
+  .ov-track{ height:22px; background:var(--bg2); border-radius:6px; overflow:hidden; }
+  .ov-fill{ height:100%; width:0; border-radius:6px; background:linear-gradient(90deg,#8b0000,var(--red2));
+    transition:width 1s cubic-bezier(.2,.7,.2,1); }
+  .ov-row:nth-child(even) .ov-fill{ background:linear-gradient(90deg,#0b57a4,var(--blue)); }
+  .ov-num{ font-weight:800; color:var(--sub); }
+
+  /* ---------- 类型导航 ---------- */
+  .gnav{ position:sticky; top:63px; z-index:50; display:flex; gap:10px; overflow-x:auto; padding:14px 28px;
+    background:rgba(11,11,15,.92); backdrop-filter:blur(12px); border-top:1px solid var(--line); border-bottom:1px solid var(--line);
+    scrollbar-width:thin; }
+  .gnav a{ flex:0 0 auto; text-decoration:none; color:#cfcfd8; font-size:13px; padding:7px 15px;
+    border:1px solid var(--line); border-radius:20px; background:var(--bg2); transition:.15s; }
+  .gnav a:hover{ border-color:var(--red); color:#fff; }
+  .gnav a b{ color:var(--red2); margin-left:4px; font-size:11px; }
+
+  /* ---------- 类型榜单 ---------- */
+  .g-section{ padding:44px 28px 6px; max-width:1100px; margin:0 auto; scroll-margin-top:130px; }
+  .g-section h2 .badge{ font-size:12px; font-weight:700; color:var(--gold); border:1px solid rgba(245,197,24,.4);
+    padding:3px 10px; border-radius:12px; background:rgba(245,197,24,.08); }
+  .rank-list{ display:flex; flex-direction:column; gap:10px; }
+  .rk-row{ display:grid; grid-template-columns:52px 1fr auto; gap:14px; align-items:center;
+    background:var(--card); border:1px solid var(--line); border-radius:14px; padding:12px 18px 12px 12px;
+    cursor:pointer; transition:.18s; }
+  .rk-row:hover{ transform:translateX(6px); border-color:#444; background:var(--card2); }
+  .rk-no{ font-size:22px; font-weight:900; text-align:center; color:var(--sub); }
+  .rk-row:nth-child(1) .rk-no,.rk-row:nth-child(2) .rk-no,.rk-row:nth-child(3) .rk-no{ color:var(--gold); font-size:26px; }
+  .rk-main{ min-width:0; }
+  .rk-title{ display:flex; align-items:baseline; gap:8px; flex-wrap:wrap; }
+  .rk-title h3{ font-size:15.5px; font-weight:800; }
+  .rk-title .en{ font-size:11px; color:var(--sub); }
+  .rk-title .hot{ font-size:10px; font-weight:700; color:var(--gold); border:1px solid rgba(245,197,24,.4);
+    padding:1px 7px; border-radius:9px; }
+  .heat-track{ height:8px; background:var(--bg2); border-radius:4px; overflow:hidden; margin-top:8px; }
+  .heat-fill{ height:100%; width:0; border-radius:4px; background:linear-gradient(90deg,#8b0000,var(--red2));
+    transition:width .9s cubic-bezier(.2,.7,.2,1); }
+  .rk-meta{ margin-top:6px; font-size:11.5px; color:var(--sub); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .rk-side{ text-align:right; display:flex; flex-direction:column; gap:4px; align-items:flex-end; }
+  .rk-metric{ font-size:12.5px; font-weight:800; color:var(--red2); white-space:nowrap; }
+  .rk-metric.blue{ color:var(--blue); }
+  .rk-grank{ font-size:11px; color:var(--sub); white-space:nowrap; }
+  .rk-grank b{ color:#cfcfda; }
+  .more{ display:none; margin-top:6px; font-size:12px; color:#c9c9d3; line-height:1.8;
+    border-top:1px dashed var(--line); padding-top:8px; grid-column:1 / -1; }
+  .more b{ color:var(--sub); }
+  .rk-row.open .more{ display:block; }
+
+  footer{ border-top:1px solid var(--line); margin-top:50px; padding:30px 28px 44px; color:var(--sub); font-size:12px; line-height:2; }
+  footer b{ color:#cfcfda; }
+  .totop{ position:fixed; right:22px; bottom:22px; z-index:60; width:42px; height:42px; border-radius:50%;
+    border:none; background:var(--red); color:#fff; font-size:18px; cursor:pointer; display:none; box-shadow:0 6px 18px rgba(0,0,0,.5); }
+  @media (max-width:640px){
+    .rk-row{ grid-template-columns:38px 1fr; }
+    .rk-side{ grid-column:2; flex-direction:row; gap:12px; align-items:baseline; }
+    .ov-row{ grid-template-columns:80px 1fr 36px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="logo">N</div>
+  <div>
+    <div style="font-weight:800;font-size:15px;">韩剧全类型榜单</div>
+    <div class="sub">Netflix K-Drama Genre Rankings · TOP 20</div>
+  </div>
+</div>
+
+<header class="hero">
+  <div class="kr">🇰🇷</div>
+  <h1>NETFLIX 韩剧 · <em>全类型 TOP 20</em> 榜</h1>
+  <p>基于「Netflix 历史剧集 TOP 135 总榜」收录的 54 部韩剧，按题材类型分组排名。热度分以总榜综合排名换算（满分 100），观看数据标注 Netflix 官方口径。</p>
+  <div class="stats" id="stats"></div>
+</header>
+
+<section class="overview">
+  <h2>类型分布总览</h2>
+  <div class="tip">各类型收录韩剧数量 · 点击任意类型直达榜单</div>
+  <div id="ovBars"></div>
+</section>
+
+<nav class="gnav" id="gnav"></nav>
+
+<main id="sections"></main>
+
+<footer>
+  <b>数据说明</b><br>
+  1. 榜单范围：「Netflix 历史剧集 TOP 135 总榜」中全部 54 部韩剧（含剧集与真人秀）；一部剧可归属多个类型，故各类型榜单存在重叠。<br>
+  2. 类型内排序依据总榜综合排名（以 Netflix 官方观看数据为锚，兼顾影响力与口碑）；热度分 = 100 × (136 − 综合排名) / 135，仅用于同图对比。<br>
+  3. 「91天观看量」为 Netflix 官方 Top10 口径（红色），「观看时长」为半年度参与度报告口径（蓝色），两者不可直接比较；无官方数据的条目标注「全球热播」。<br>
+  4. 数据截至 2026 年 8 月官方榜单，整理于 2026 年 9 月。本页面仅用于学习交流，不存储任何版权内容。
+</footer>
+
+<button class="totop" id="totop" title="回到顶部">↑</button>
+
+<script>
+/* ================= 韩剧数据集（字段同总榜） ================= */
+const SHOWS = [
+{r:1,t:"Squid Game",cn:"鱿鱼游戏",ys:"2021–2025",g:["惊悚","生存","剧情"],v:265.2,h:2205.2,mn:"第1季 · 91天",cast:"李政宰 / 郑好娟 / 朴海秀 / 魏嘏隽",d:"456名走投无路的参赛者被困神秘场地，以童年游戏定生死、争夺456亿韩元。全球现象级爆款，Netflix历史观看量第一的剧集。",off:1},
+{r:19,t:"Teach You a Lesson",cn:"参考教",ys:"2026",g:["动作","剧情","校园"],v:64.7,h:691.1,mn:"限定剧 · 91天",cast:"金武烈 / 李星民 / 秦基周",d:"2026年韩剧爆款，改编自人气网漫《Get Schooled》：校园秩序崩坏之际，非常规督导员空降学校以暴制暴。",off:1},
+{r:22,t:"All of Us Are Dead",cn:"僵尸校园",ys:"2022–",g:["丧尸","惊悚","青春"],v:55.5,h:679.3,mn:"第1季 · 91天",cast:"朴持厚 / 尹灿荣 / 赵怡贤 / 朴所罗门",d:"孝山高中爆发丧尸病毒，学生们被困校园极限求生。韩剧青春丧尸题材代表作，上线即登顶全球榜。"},
+{r:25,t:"Queen of Tears",cn:"泪之女王",ys:"2024",g:["爱情","剧情","喜剧"],h:682.6,mn:"全剧累计",cast:"金秀贤 / 金智媛",d:"财阀女王洪海仁与超市王子白贤佑婚姻危机后重燃爱火。tvN历代收视冠军，2024年最火韩剧。"},
+{r:26,t:"Extraordinary Attorney Woo",cn:"非常律师禹英禑",ys:"2022",g:["律政","剧情","治愈"],h:662.1,mn:"全剧累计",cast:"朴恩斌 / 姜泰伍",d:"自闭症谱系天才律师禹英禑以独特视角破解案件，温暖治愈的律政神剧，获国际艾美奖提名。"},
+{r:27,t:"The Glory",cn:"黑暗荣耀",ys:"2022–2023",g:["复仇","剧情","惊悚"],h:561,mn:"全剧累计",cast:"宋慧乔 / 李到晛 / 林智妍 / 廉惠兰",d:"文同恩蛰伏十八年，向高中霸凌者展开精密复仇。金银淑编剧，两季均登全球非英语榜第一。"},
+{r:88,t:"Crash Landing on You",cn:"爱的迫降",ys:"2019–2020",g:["爱情","剧情","喜剧"],cast:"玄彬 / 孙艺珍",d:"韩国财阀千金滑翔伞事故迫降朝鲜，与朝鲜军官跨国相恋。tvN历代收视传奇、亚洲现象级爱情剧。"},
+{r:89,t:"Kingdom",cn:"王国（李尸朝鲜）",ys:"2019–2021",g:["丧尸","历史","惊悚"],cast:"朱智勋 / 裴斗娜 / 柳承龙",d:"朝鲜王朝丧尸瘟疫爆发，世子李苍追查生死草之谜。古装+丧尸的类型开创之作。"},
+{r:90,t:"Sweet Home",cn:"甜蜜家园",ys:"2020–2024",g:["怪物","惊悚","动作"],cast:"宋江 / 李阵郁 / 李诗英",d:"公寓住户突遭怪物化末日，自闭少年车贤秀在欲望与怪物间挣扎。特效大片级韩剧，三季完结。"},
+{r:91,t:"Itaewon Class",cn:"梨泰院Class",ys:"2020",g:["剧情","励志","爱情"],cast:"朴叙俊 / 金多美",d:"朴世路为父复仇，在梨泰院开酒馆对抗餐饮财阀。热血创业+反财阀爽剧。"},
+{r:92,t:"Hospital Playlist",cn:"机智医生生活",ys:"2020–2021",g:["医疗","剧情","治愈"],cast:"曹政奭 / 柳演锡 / 郑敬淏 / 田美都",d:"律帝医院99届五人帮的医生日常，手术台与乐队排练交织。申元浩导演的治愈系医疗神剧。"},
+{r:93,t:"Vincenzo",cn:"黑道律师文森佐",ys:"2021",g:["犯罪","喜剧","剧情"],cast:"宋仲基 / 全汝彬",d:"意大利黑手党顾问律师文森佐以恶制恶清算韩国财阀，黑色幽默动作爽剧。"},
+{r:94,t:"Hometown Cha-Cha-Cha",cn:"海岸村恰恰恰",ys:"2021",g:["爱情","喜剧","治愈"],cast:"金宣虎 / 申敏儿",d:"牙医尹慧珍来到公辰海边小村开诊所，与万能「洪班长」的慢生活爱情，治愈系天花板。"},
+{r:95,t:"Hellbound",cn:"地狱公使",ys:"2021–2024",g:["惊悚","奇幻","剧情"],cast:"刘亚仁 / 金贤珠",d:"釜山街头突现地狱使者宣告死亡时刻，邪教趁乱崛起。延尚昊执导的宗教惊悚寓言。"},
+{r:96,t:"D.P.",cn:"D.P：逃兵追缉令",ys:"2021–2023",g:["剧情","犯罪","军旅"],cast:"丁海寅 / 具教焕",d:"宪兵逃兵追缉组成员直面军中霸凌黑暗，现实题材韩剧力作，推动社会讨论。"},
+{r:97,t:"Move to Heaven",cn:"Move to Heaven：我是遗物整理师",ys:"2021",g:["剧情","治愈"],cast:"李帝勋 / 汤峻相",d:"遗物整理公司透过遗物讲述逝者的未完成人生，泪腺崩坏之作。"},
+{r:98,t:"My Name",cn:"以吾之名",ys:"2021",g:["动作","犯罪","复仇"],cast:"韩素希 / 朴熙顺",d:"尹智友为父报仇潜入贩毒集团做卧底，韩素希转型的暗黑动作复仇剧。"},
+{r:99,t:"The Silent Sea",cn:"寂静之海",ys:"2021",g:["科幻","惊悚","悬疑"],cast:"裴斗娜 / 孔刘",d:"精英小队登月回收神秘样本，月球基地的生存科幻惊悚剧。"},
+{r:100,t:"Love Alarm",cn:"恋爱铃",ys:"2019–2021",g:["爱情","青春","科幻"],cast:"金所泫 / 宋江 / 郑家蓝",d:"手机APP「恋爱铃」能探测10米内喜欢你的人，科技时代的青春三角恋。"},
+{r:101,t:"Extracurricular",cn:"人间课堂",ys:"2020",g:["犯罪","剧情","青春"],cast:"金东希 / 朴柱炫",d:"模范生暗中经营非法中介生意，少年犯罪题材的现实主义韩剧，暗黑惊艳。"},
+{r:102,t:"Mr. Sunshine",cn:"阳光先生",ys:"2018",g:["历史","爱情","剧情"],cast:"李秉宪 / 金泰梨",d:"1871年辛未洋扰背景下的朝鲜义兵抗日史诗，金银淑编剧，电影级画面与制作。"},
+{r:103,t:"Reply 1988",cn:"请回答1988",ys:"2015–2016",g:["家庭","青春","剧情"],cast:"李惠利 / 朴宝剑 / 柳俊烈",d:"双门洞五户人家的1988年，邻里亲情与青春群像的国民神剧。"},
+{r:104,t:"Business Proposal",cn:"社内相亲",ys:"2022",g:["爱情","喜剧"],cast:"安孝燮 / 金世正",d:"小职员替闺蜜相亲却遇上自家公司社长，契约恋爱的甜宠喜剧，2022年全球大热。"},
+{r:105,t:"Twenty-Five Twenty-One",cn:"二十五，二十一",ys:"2022",g:["青春","爱情","剧情"],cast:"金泰梨 / 南柱赫",d:"1998年IMF时代，击剑少女罗希度与落魄富二代白易辰的青春物语，笑泪交织。"},
+{r:106,t:"Our Blues",cn:"我们的蓝调",ys:"2022",g:["剧情","家庭"],cast:"李秉宪 / 申敏儿 / 金宇彬 / 韩志旼",d:"济州岛渔村群像剧，全明星阵容演绎平凡人的苦与暖。"},
+{r:107,t:"Alchemy of Souls",cn:"还魂",ys:"2022–2023",g:["奇幻","爱情","动作"],cast:"李宰旭 / 郑素敏 / 高允贞",d:"架空「大湖国」的换魂术引发命运纠葛，洪氏姐妹编剧的古装奇幻爱情剧。"},
+{r:108,t:"Little Women",cn:"小小姐们",ys:"2022",g:["悬疑","剧情"],cast:"金高银 / 南志铉 / 朴持厚",d:"三姐妹卷入700亿韩元黑金漩涡，金希元导演的悬疑质感之作。"},
+{r:109,t:"Narco-Saints",cn:"毒枭圣徒",ys:"2022",g:["犯罪","动作","惊悚"],cast:"河正宇 / 黄政民 / 朴海秀",d:"韩国企业家潜入苏里南毒枭集团做卧底，南美式黑帮大片质感。"},
+{r:110,t:"Money Heist: Korea",cn:"纸钞屋：韩国篇",ys:"2022",g:["犯罪","惊悚","悬疑"],cast:"刘智泰 / 朴海秀 / 全钟瑞",d:"半岛统一经济区背景下的造币厂劫案，韩版《纸钞屋》的本土化改编。"},
+{r:111,t:"Single's Inferno",cn:"单身即地狱",ys:"2021–2025",g:["真人秀","恋爱"],cast:"参赛者群像",d:"俊男美女困守荒岛，配对成功才能去天堂岛约会。Netflix首部韩国恋爱真人秀，已出四季。"},
+{r:112,t:"Physical: 100",cn:"体能之巅：百人大挑战",ys:"2023–2024",g:["真人秀","竞技"],cast:"百名体能强者",d:"100名体能强者角逐3亿韩元与「最完美肉体」，韩综体能竞技巅峰。"},
+{r:113,t:"The Devil's Plan",cn:"魔鬼的计谋",ys:"2023–2025",g:["真人秀","智斗"],cast:"河锡辰 / 夫胜宽",d:"12名玩家合宿7天斗智博弈，高智商生存真人秀，口碑封神。"},
+{r:114,t:"Gyeongseong Creature",cn:"京城怪物",ys:"2023–2024",g:["惊悚","历史","动作"],cast:"朴叙俊 / 韩素希",d:"1945年京城，典当铺老板与寻人专家对抗人体实验诞生的怪物，抗日+怪物的年代惊悚剧。"},
+{r:115,t:"My Demon",cn:"与恶魔有约",ys:"2023–2024",g:["爱情","奇幻","喜剧"],cast:"宋江 / 金裕贞",d:"恶魔都到曦与财阀千金郑九元契约结婚，先婚后爱的奇幻罗曼史。"},
+{r:116,t:"King the Land",cn:"欢迎来到王之国",ys:"2023",g:["爱情","喜剧"],cast:"李俊昊 / 林允儿",d:"财阀继承人与酒店职员的欢喜冤家爱情，2023年浪漫喜剧双料热门。"},
+{r:117,t:"Destined with You",cn:"恋爱不可抗力",ys:"2023",g:["爱情","奇幻","喜剧"],cast:"曹宝儿 / 金路云",d:"公务员洪朝与律师张信裕的「不可抗力」咒术爱情喜剧。"},
+{r:118,t:"Doona!",cn:"我的女神室友斗娜",ys:"2023",g:["爱情","剧情"],cast:"裴秀智 / 梁世宗",d:"隐退女团成员李斗娜与大学生李元俊的合租暧昧，网漫改编的梦幻爱情剧。"},
+{r:119,t:"Mask Girl",cn:"假面女郎",ys:"2023",g:["惊悚","剧情","犯罪"],cast:"高贤贞 / 林珍娜 / 安宰弘",d:"「假面女郎」金貌美在容貌焦虑下的疯狂与救赎，三位女演员分饰同一角色的不同人生阶段。"},
+{r:120,t:"Celebrity",cn:"绝世网红",ys:"2023",g:["剧情","悬疑"],cast:"朴珪瑛 / 姜敏赫",d:"一夜爆红的网红徐雅莉，揭开网红经济名利场的黑幕与代价。"},
+{r:121,t:"Bloodhounds",cn:"猎犬",ys:"2023",g:["动作","犯罪"],cast:"禹棹焕 / 李相二",d:"拳击手兄弟联手打垮非法高利贷黑帮，硬核动作爽剧。"},
+{r:122,t:"Black Knight",cn:"末日骑士",ys:"2023",g:["科幻","动作"],cast:"金宇彬 / 宋承宪",d:"雾霾末日下的传奇快递司机5-8，护送希望的科幻动作剧。"},
+{r:123,t:"Queenmaker",cn:"造后者",ys:"2023",g:["政治","剧情","复仇"],cast:"金喜爱 / 文素利",d:"公关女王与「犀牛」人权律师联手扳倒财阀的女性复仇政治剧。"},
+{r:124,t:"The 8 Show",cn:"第八个秀",ys:"2024",g:["悬疑","剧情","生存"],cast:"柳俊烈 / 千玗嬉",d:"密闭大楼里的8人奖金累积秀，时间就是金钱的阶层寓言式生存剧。"},
+{r:125,t:"A Killer Paradox",cn:"杀人者的难堪",ys:"2024",g:["犯罪","惊悚","黑色幽默"],cast:"崔宇植 / 孙锡久",d:"意外杀人的大学生与执着刑警的猫鼠游戏，黑色寓言。"},
+{r:126,t:"Parasyte: The Grey",cn:"寄生兽：灰色部队",ys:"2024",g:["科幻","惊悚","动作"],cast:"全昭霓 / 具教焕",d:"岩明均漫画韩国本土化：与半寄生兽共存对抗寄生兽组织，特效惊艳。"},
+{r:127,t:"Hierarchy",cn:"名校的阶梯",ys:"2024",g:["青春","悬疑","剧情"],cast:"卢正义 / 李彩玟",d:"贵族高中转学生挑战金字塔顶端的青春悬疑剧。"},
+{r:128,t:"Mr. Plankton",cn:"浮游先生",ys:"2024",g:["爱情","剧情","公路"],cast:"禹棹焕 / 李瑜美",d:"身患绝症的「浮游」男子与前女友的公路告别之旅，笑中带泪。"},
+{r:129,t:"The Trunk",cn:"一箱情缘",ys:"2024",g:["爱情","悬疑","剧情"],cast:"孔刘 / 徐玄振",d:"婚姻介绍所的限时夫妻，湖边行李箱牵出的秘密爱情悬疑剧。"},
+{r:130,t:"Love Next Door",cn:"妈妈朋友的儿子",ys:"2024",g:["爱情","喜剧"],cast:"丁海寅 / 郑素敏",d:"青梅竹马的「妈朋儿」与「妈朋女」成年后重逢的邻家罗曼史。"},
+{r:131,t:"Culinary Class Wars",cn:"黑白厨师",ys:"2024–",g:["真人秀","美食"],cast:"白种元 / 安成宰",d:"韩国料理阶级战：黑汤匙厨师挑战白汤匙名厨，2024年全球爆款韩综。"},
+{r:132,t:"Weak Hero Class 1",cn:"脆弱的英雄",ys:"2022–",g:["校园","动作","剧情"],cast:"朴志训 / 崔显旭",d:"模范生延时恩以脑力和工具对抗校园暴力，2025年登陆Netflix后全球翻红。"},
+{r:133,t:"When Life Gives You Tangerines",cn:"苦尽柑来",ys:"2025",g:["爱情","剧情","年代"],cast:"李知恩 / 朴宝剑 / 文素利 / 朴海俊",d:"济州岛海女之女爱纯与梁宽植跨越半个世纪的爱情与人生，2025年催泪神剧，豆瓣9.5分。"},
+{r:134,t:"Resident Playbook",cn:"机智住院医生生活",ys:"2025",g:["医疗","剧情","青春"],cast:"高允贞 / 申诗雅",d:"《机智医生生活》衍生剧：钟路律帝医院妇产科住院医生五人帮的成长日常。"},
+{r:135,t:"Bon Appétit, Your Majesty",cn:"暴君的厨师",ys:"2025",g:["爱情","喜剧","穿越"],cast:"林允儿 / 李彩玟",d:"法国料理厨师穿越到朝鲜，用美食征服「暴君」大王。2025年tvN/Netflix热播爱情喜剧。"}
+];
+
+/* ================= 工具 ================= */
+const $ = s => document.querySelector(s);
+const fmt = v => v==null ? "" : (v>=100 ? (v/100).toFixed(2).replace(/0+$/,"").replace(/\.$/,"")+" 亿" : (v*100).toFixed(0).replace(/(\d)(?=(\d{3})+$)/g,"$1,")+" 万");
+const metricText = s => {
+  if (s.v!=null) return {txt:`91天观看量 ${fmt(s.v)}`, cls:""};
+  if (s.h!=null) return {txt:`观看时长 ${fmt(s.h)} 小时`, cls:"blue"};
+  return {txt:"全球热播", cls:"blue"};
+};
+const heat = s => Math.round(100 * (136 - s.r) / 135); // 热度分：按总榜排名换算
+
+/* ================= 类型分组 ================= */
+const genreMap = new Map();
+SHOWS.forEach(s => s.g.forEach(g => {
+  if (!genreMap.has(g)) genreMap.set(g, []);
+  genreMap.get(g).push(s);
+}));
+const genres = [...genreMap.entries()]
+  .map(([name, list]) => ({ name, list: list.sort((a,b)=>a.r-b.r).slice(0,20), total: list.length }))
+  .sort((a,b)=> b.total - a.total || a.name.localeCompare(b.name,"zh"));
+
+/* ================= 顶部统计 ================= */
+$("#stats").innerHTML = `
+  <div class="stat"><b>${SHOWS.length}</b><span>收录韩剧</span></div>
+  <div class="stat"><b><i>${genres.length}</i></b><span>覆盖类型</span></div>
+  <div class="stat"><b>${genres[0].name}</b><span>第一大类型（${genres[0].total} 部）</span></div>
+  <div class="stat"><b>2015–2026</b><span>年份跨度</span></div>`;
+
+/* ================= 类型总览条形图 ================= */
+const ovWrap = $("#ovBars"), ovMax = genres[0].total;
+genres.forEach(g => {
+  const row = document.createElement("div");
+  row.className = "ov-row";
+  row.innerHTML = `<div class="gname">${g.name}</div>
+    <div class="ov-track"><div class="ov-fill" data-w="${(g.total/ovMax*100).toFixed(1)}"></div></div>
+    <div class="ov-num">${g.total}</div>`;
+  row.addEventListener("click", () => document.getElementById("g_"+g.name)?.scrollIntoView({behavior:"smooth"}));
+  ovWrap.appendChild(row);
+});
+
+/* ================= 类型导航 ================= */
+const nav = $("#gnav");
+genres.forEach(g => {
+  const a = document.createElement("a");
+  a.href = "#g_" + g.name;
+  a.innerHTML = `${g.name}<b>${g.total}</b>`;
+  nav.appendChild(a);
+});
+
+/* ================= 各类型榜单 ================= */
+const main = $("#sections");
+genres.forEach(g => {
+  const sec = document.createElement("section");
+  sec.className = "g-section"; sec.id = "g_" + g.name;
+  const best = g.list[0];
+  sec.innerHTML = `<h2>${g.name} TOP ${g.list.length}
+      <span class="badge">共 ${g.total} 部 · 榜首《${best.cn}》</span></h2>
+    <div class="tip">按总榜综合排名排序 · 热度条为相对热度分 · 点击条目展开简介</div>
+    <div class="rank-list"></div>`;
+  const list = sec.querySelector(".rank-list");
+  g.list.forEach((s,i) => {
+    const m = metricText(s);
+    const row = document.createElement("div");
+    row.className = "rk-row";
+    row.innerHTML = `
+      <div class="rk-no">${["🥇","🥈","🥉"][i] || (i+1)}</div>
+      <div class="rk-main">
+        <div class="rk-title"><h3>${s.cn}</h3><span class="en">${s.t} · ${s.ys}</span>${s.off?'<span class="hot">★ 官方历史TOP10</span>':''}</div>
+        <div class="heat-track"><div class="heat-fill" data-w="${heat(s)}"></div></div>
+        <div class="rk-meta">主演：${s.cast}</div>
+      </div>
+      <div class="rk-side">
+        <div class="rk-metric ${m.cls}">${m.txt}</div>
+        <div class="rk-grank">总榜 <b>#${s.r}</b> · 热度 <b>${heat(s)}</b></div>
+      </div>
+      <div class="more"><b>简介：</b>${s.d}</div>`;
+    row.addEventListener("click", () => row.classList.toggle("open"));
+    list.appendChild(row);
+  });
+  main.appendChild(sec);
+});
+
+/* ================= 入场动画 & 回到顶部 ================= */
+const io = new IntersectionObserver(es => es.forEach(e => {
+  if (!e.isIntersecting) return;
+  io.unobserve(e.target);
+  e.target.querySelectorAll(".heat-fill,.ov-fill").forEach(f => { f.style.width = f.dataset.w + "%"; });
+}), {threshold:.15});
+document.querySelectorAll(".rk-row,.ov-row").forEach(el => io.observe(el));
+setTimeout(() => document.querySelectorAll(".ov-fill").forEach(f => f.style.width = f.dataset.w + "%"), 300);
+
+const totop = $("#totop");
+window.addEventListener("scroll", () => { totop.style.display = window.scrollY > 600 ? "block" : "none"; });
+totop.addEventListener("click", () => window.scrollTo({top:0, behavior:"smooth"}));
+</script>
+</body>
+</html>
